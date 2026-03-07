@@ -1,13 +1,6 @@
 categories: ["cs.CV", "cs.LG", "cs.AI", "cs.CL", "cs.RO", "cs.CR"]
 keywords:
-  - "adversarial"
-  - "security"
-  - "safety"
-  - "backdoor"
-  - "attack"
-  - "watermark"
-  - "injection"
-  - "jailbreak"
+  - "vision language model"
 
 # exclude_keywords: # 选择排除的关键词
 #   - "Large Language Model"
