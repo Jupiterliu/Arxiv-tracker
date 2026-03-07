@@ -12,6 +12,7 @@ keywords:
   - "Model Stealing"
   - "Reasoning Manipulation"
   - "Weight-based Attack"
+  - "Tool Injection"
 
 # exclude_keywords: # 选择排除的关键词
 #   - "Large Language Model"
