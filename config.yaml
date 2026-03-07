@@ -1,6 +1,26 @@
 categories: ["cs.CV", "cs.LG", "cs.AI", "cs.CL", "cs.RO", "cs.CR"]
 keywords:
-  - "vision language model"
+  - "Adversarial Prompt"
+  - "Adversarial Attack"
+  - "backdoor"
+  - "watermark"
+  - "Watermark Removal"
+  - "prompt injection"
+  - "jailbreak"
+  - "poisoning"
+  - "Data Poisoning"
+  - "Alignment Poisoning"
+  - "Fine-tuning Poisoning"
+  - "hijacking"
+  - "Membership Inference"
+  - "Model Extraction"
+  - "Agent Hijacking"
+  - "Reasoning Manipulation"
+  - "Weight-based Attack"
+  - "RAG Poisoning"
+  - "Tool Injection"
+  - "Visual Prompt Injection"
+  - "Training Data Extraction"
 
 # exclude_keywords: # 选择排除的关键词
 #   - "Large Language Model"
