@@ -56,9 +56,15 @@ def _expand_variants(kw: str) -> List[str]:
 
 #     return "(" + " OR ".join(parts) + ")"
 
+# def _kw_group(kw: str) -> str:
+#     variants = _expand_variants(kw)
+#     return "(" + " OR ".join(_field_or(FIELDS, v) for v in variants) + ")"
+
 def _kw_group(kw: str) -> str:
-    variants = _expand_variants(kw)
-    return "(" + " OR ".join(_field_or(FIELDS, v) for v in variants) + ")"
+    kw = kw.strip()
+    if " " in kw:
+        return f'all:"{kw}"'
+    return f"all:{kw}"
 
 def build_search_query(categories: List[str], keywords: List[str], exclude_keywords: List[str] = None, logic: str = "AND") -> str:    
     """
