@@ -2,7 +2,8 @@
 import re
 from typing import List
 
-FIELDS = ("ti", "abs", "co")  # 标题/摘要/评论（会议常在 comments）
+# FIELDS = ("ti", "abs", "co")  # 标题/摘要/评论（会议常在 comments）
+FIELDS = ("all",)
 
 def _quote(term: str) -> str:
     # 有空格或连字符时加引号，避免被拆词
@@ -11,8 +12,14 @@ def _quote(term: str) -> str:
         return f'"{t}"'
     return t
 
+# def _field_or(fields: List[str], term: str) -> str:
+#     q = _quote(term)
+#     return "(" + " OR ".join(f"{f}:{q}" for f in fields) + ")"
+
 def _field_or(fields: List[str], term: str) -> str:
     q = _quote(term)
+    if len(fields) == 1:
+        return f"{fields[0]}:{q}"
     return "(" + " OR ".join(f"{f}:{q}" for f in fields) + ")"
 
 def _expand_variants(kw: str) -> List[str]:
@@ -25,29 +32,33 @@ def _expand_variants(kw: str) -> List[str]:
         out.add(k.replace("-", " "))
     return sorted(out, key=len, reverse=True)  # 优先长短语
 
+# def _kw_group(kw: str) -> str:
+#     """
+#     为一个逻辑关键词构造一个子查询：
+#     - 先尝试短语精确（含连字符/空格变体）
+#     - 若包含 'open vocabulary' 与 'segmentation'，再加一个“拆词 AND”备选
+#     """
+#     variants = _expand_variants(kw)
+#     parts = []
+
+#     # 1) 短语匹配（多个变体，ti/abs/co）
+#     for v in variants:
+#         parts.append(_field_or(FIELDS, v))
+
+#     # 2) 针对 open-vocabulary segmentation 的拆词 AND（覆盖更多写法）
+#     low = kw.lower()
+#     if ("open vocabulary" in low or "open-vocabulary" in low) and "segmentation" in low:
+#         ov_terms = ["open vocabulary", "open-vocabulary", "open-vocabulary segmentation", "open vocabulary segmentation"]
+#         seg_terms = ["segmentation", "image segmentation"]
+#         ov_or = "(" + " OR ".join(_field_or(FIELDS, t) for t in ov_terms) + ")"
+#         seg_or = "(" + " OR ".join(_field_or(FIELDS, t) for t in seg_terms) + ")"
+#         parts.append(f"({ov_or} AND {seg_or})")
+
+#     return "(" + " OR ".join(parts) + ")"
+
 def _kw_group(kw: str) -> str:
-    """
-    为一个逻辑关键词构造一个子查询：
-    - 先尝试短语精确（含连字符/空格变体）
-    - 若包含 'open vocabulary' 与 'segmentation'，再加一个“拆词 AND”备选
-    """
     variants = _expand_variants(kw)
-    parts = []
-
-    # 1) 短语匹配（多个变体，ti/abs/co）
-    for v in variants:
-        parts.append(_field_or(FIELDS, v))
-
-    # 2) 针对 open-vocabulary segmentation 的拆词 AND（覆盖更多写法）
-    low = kw.lower()
-    if ("open vocabulary" in low or "open-vocabulary" in low) and "segmentation" in low:
-        ov_terms = ["open vocabulary", "open-vocabulary", "open-vocabulary segmentation", "open vocabulary segmentation"]
-        seg_terms = ["segmentation", "image segmentation"]
-        ov_or = "(" + " OR ".join(_field_or(FIELDS, t) for t in ov_terms) + ")"
-        seg_or = "(" + " OR ".join(_field_or(FIELDS, t) for t in seg_terms) + ")"
-        parts.append(f"({ov_or} AND {seg_or})")
-
-    return "(" + " OR ".join(parts) + ")"
+    return "(" + " OR ".join(_field_or(FIELDS, v) for v in variants) + ")"
 
 def build_search_query(categories: List[str], keywords: List[str], exclude_keywords: List[str] = None, logic: str = "AND") -> str:    
     """
