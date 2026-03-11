@@ -1,6 +1,7 @@
 categories: ["cs.CV", "cs.LG", "cs.AI", "cs.CL", "cs.RO", "cs.CR"]
 keywords:
   - "Adversarial Attack"
+  - "Physical Attack"
   - "Backdoor"
   - "Watermark"
   - "Prompt Injection"
