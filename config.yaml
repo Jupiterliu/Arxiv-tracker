@@ -87,7 +87,7 @@ site:
   enabled: true
   dir: "docs" 
   title: "arXiv 论文速递"
-  keep_runs: 1024         # 历史保留期（按页面份数）
+  keep_runs: 2048         # 历史保留期（按页面份数）
   theme: "light"        # "light" | "dark" | "auto"
   accent: "#2563eb"     # 主题色（可自定义）
 
