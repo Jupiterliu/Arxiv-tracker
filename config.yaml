@@ -21,7 +21,7 @@ keywords:
 #   - "LLM"
   
 logic: "AND"                 # 组间逻辑：categories 与 keywords 间 AND/OR
-max_results: 100
+max_results: 40
 sort_by: "lastUpdatedDate"  # 还可以是submittedDate 建议改成lastUpdatedDate按更新时间排，能捞到v2/v3的“新增”
 sort_order: "descending"
 
@@ -81,7 +81,7 @@ llm:
 translate:
   enabled: true         # 是否启用
   lang: "zh"            # 目前只需中文；也可扩展 en/ja 等
-  fields: ["title", "summary"]   # 可扩：["title","summary","comments"]
+  fields: ["title"]   # 可扩：["title","summary","comments"]
 
 site:
   enabled: true
