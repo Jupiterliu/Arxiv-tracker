@@ -1,6 +1,6 @@
 categories: ["cs.CV", "cs.LG", "cs.AI", "cs.CL", "cs.RO", "cs.CR"]
 keywords:
-  - "Adversarial Attack"
+  - "Adversarial"
   - "Physical Attack"
   - "Latency Attack"
   - "Backdoor"
@@ -15,13 +15,15 @@ keywords:
   - "Reasoning Manipulation"
   - "Weight-based Attack"
   - "Tool Injection"
+  - "VLA"
+  - "World Model"
 
 # exclude_keywords: # 选择排除的关键词
 #   - "Large Language Model"
 #   - "LLM"
   
 logic: "AND"                 # 组间逻辑：categories 与 keywords 间 AND/OR
-max_results: 40
+max_results: 70
 sort_by: "lastUpdatedDate"  # 还可以是submittedDate 建议改成lastUpdatedDate按更新时间排，能捞到v2/v3的“新增”
 sort_order: "descending"
 
