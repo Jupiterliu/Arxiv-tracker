@@ -246,3 +246,74 @@ DATA:
         if "comments_zh" in data and isinstance(data["comments_zh"], str):
             out["comments_zh"] = data["comments_zh"].strip()
     return out
+
+
+def call_llm_categorize(
+    items: List[Dict[str, Any]],
+    *,
+    base_url: str,
+    model: str,
+    api_key: str,
+    system_prompt: str = "",
+) -> Dict[str, Any]:
+    """
+    对论文做分组分类，并输出总览与每组总结。
+    返回：
+    {
+      "overview_zh": "...",
+      "groups": [
+        {"name_zh":"...", "summary_zh":"...", "paper_ids":["..."]},
+      ]
+    }
+    """
+    compact = []
+    for it in items:
+        compact.append({
+            "id": it.get("id"),
+            "title": it.get("title", ""),
+            "summary": it.get("summary", ""),
+            "primary_category": it.get("primary_category", ""),
+            "categories": it.get("categories", []),
+        })
+
+    sys_prompt = system_prompt or (
+        "你是论文情报分析助手。你的任务是根据论文标题与摘要进行主题聚类，给出简明中文总览。"
+    )
+
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content":
+            "请对下面论文进行主题分类。\n"
+            "要求：\n"
+            "1) 输出 2~8 个类别，每篇论文只能归到一个类别。\n"
+            "2) 生成总体导语（1~3句），说明本次抓取覆盖了哪些方向。\n"
+            "3) 每个类别生成一段简短中文总结（1~3句）。\n"
+            "4) 不要遗漏论文 id。\n"
+            "5) 只返回严格 JSON，格式：\n"
+            '{"overview_zh":"...", "groups":[{"name_zh":"...", "summary_zh":"...", "paper_ids":["id1","id2"]}]}\n\n'
+            f"DATA:\n{json.dumps(compact, ensure_ascii=False)}"
+        }
+    ]
+    text = _chat_completions_request(
+        base_url=base_url, api_key=api_key, model=model, messages=messages,
+        temperature=0.1, max_tokens=1600
+    )
+    data = _json_loose(text)
+    out = {"overview_zh": "", "groups": []}
+    out["overview_zh"] = (data.get("overview_zh") or "").strip()
+    groups = data.get("groups") or []
+    if isinstance(groups, list):
+        clean = []
+        for g in groups:
+            if not isinstance(g, dict):
+                continue
+            pids = g.get("paper_ids") or []
+            if not isinstance(pids, list):
+                pids = []
+            clean.append({
+                "name_zh": (g.get("name_zh") or "").strip(),
+                "summary_zh": (g.get("summary_zh") or "").strip(),
+                "paper_ids": [str(x) for x in pids if x],
+            })
+        out["groups"] = clean
+    return out
