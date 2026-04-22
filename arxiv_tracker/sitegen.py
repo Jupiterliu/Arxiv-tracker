@@ -141,10 +141,6 @@ def _card(it: Dict[str, Any],
     zh_title = (trans_zh or {}).get("title_zh")
     zh_abs   = (trans_zh or {}).get("summary_zh")
 
-    # 新的双语总结（来自 summarizer）
-    digest_en = (sum_en or {}).get("digest_en") or (sum_zh or {}).get("digest_en") or ""
-    digest_zh = (sum_zh or {}).get("digest_zh") or (sum_en or {}).get("digest_zh") or ""
-
     parts = [f'<div class="card">', f'<div class="title">{_esc(t)}</div>']
 
     # 元信息分行
@@ -169,15 +165,6 @@ def _card(it: Dict[str, Any],
         parts.append('<details class="detail"><summary>中文标题/摘要</summary>')
         if zh_title: parts.append(f'<div class="mono"><b>标题：</b>{_esc(zh_title)}</div>')
         if zh_abs:   parts.append(f'<div class="mono" style="margin-top:8px">{_esc(zh_abs)}</div>')
-        parts.append('</details>')
-
-    # ✅ 只渲染双语总结（英文→中文），去掉 TL;DR & 方法卡
-    if digest_en or digest_zh:
-        parts.append('<details class="detail"><summary>Summary / 总结</summary>')
-        if digest_en:
-            parts.append(f'<div class="mono">{_esc(digest_en)}</div>')
-        if digest_zh:
-            parts.append(f'<div class="mono" style="margin-top:8px">{_esc(digest_zh)}</div>')
         parts.append('</details>')
 
     parts.append('</div>')
@@ -269,6 +256,7 @@ def generate_site(items: List[Dict[str,Any]],
                   summaries_zh: Dict[str,Dict[str,str]],
                   summaries_en: Dict[str,Dict[str,str]],
                   translations: Dict[str,Dict[str,str]],
+                  categorization: Dict[str, Any],
                   site_dir: str, site_title: str = "arXiv Results",
                   keep_runs: int = 60,
                   theme: str = "light",
@@ -278,10 +266,26 @@ def generate_site(items: List[Dict[str,Any]],
     os.makedirs(archive_dir, exist_ok=True)
     open(os.path.join(site_dir, ".nojekyll"), "w").close()
 
+    by_id = {it.get("id"): it for it in items if it.get("id")}
+    groups = (categorization or {}).get("groups") or []
+    overview = (categorization or {}).get("overview_zh") or ""
+
     cards = []
-    for it in items:
-        sid = it.get("id") or ""
-        cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
+    if overview:
+        cards.append(f'<div class="card"><div class="title">分类概览</div><div class="mono">{_esc(overview)}</div></div>')
+
+    for g in groups:
+        gname = g.get("name_zh") or "未命名类别"
+        gsum = g.get("summary_zh") or ""
+        cards.append(f'<div class="card"><div class="title">类别：{_esc(gname)}</div>'
+                     + (f'<div class="mono">{_esc(gsum)}</div>' if gsum else '')
+                     + '</div>')
+        for pid in g.get("paper_ids", []):
+            it = by_id.get(pid)
+            if not it:
+                continue
+            sid = it.get("id") or ""
+            cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
     cards_html = "\n".join(cards)
     hist_html = "\n".join(_history_list(archive_dir, keep_runs))
 
