@@ -9,6 +9,7 @@ from .translator import translate_item
 from .categorizer import categorize_items
 from .email_template import render_email_html
 from .exporter import md_to_pdf
+from .ids import canonical_arxiv_id
 
 # 进程级防重：本进程内只允许发送一次
 _SENT_EMAIL = False
@@ -199,11 +200,11 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                     with open(state_path, "r", encoding="utf-8") as f:
                         j = json.load(f) or {}
                         if isinstance(j, dict) and "ids" in j:
-                            seen_ids = set(j.get("ids") or [])
+                            seen_ids = set(canonical_arxiv_id(x) for x in (j.get("ids") or []) if x)
                         elif isinstance(j, dict):
-                            seen_ids = set(j.keys())
+                            seen_ids = set(canonical_arxiv_id(x) for x in j.keys() if x)
                         elif isinstance(j, list):
-                            seen_ids = set(j)
+                            seen_ids = set(canonical_arxiv_id(x) for x in j if x)
             except Exception:
                 seen_ids = set()
 
@@ -215,6 +216,7 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
         max_pages = 20
         start = 0
         collected, reached_cutoff = [], False
+        collected_ids = set()
 
         for _page in range(max_pages):
             xml = fetch_arxiv_feed(
@@ -233,11 +235,15 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                     break
 
                 # 去重
-                aid = it.get("id")
+                aid = it.get("id_canonical") or canonical_arxiv_id(it.get("id") or "")
                 if unique_only and aid and aid in seen_ids:
+                    continue
+                if aid and aid in collected_ids:
                     continue
 
                 collected.append(it)
+                if aid:
+                    collected_ids.add(aid)
                 if len(collected) >= want_new:
                     break
 
@@ -469,7 +475,7 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
             if unique_only and state_path and items and (site_generated or email_sent):
                 all_seen = set(seen_ids)
                 for it in items:
-                    aid = it.get("id")
+                    aid = it.get("id_canonical") or canonical_arxiv_id(it.get("id") or "")
                     if aid:
                         all_seen.add(aid)
                 p = pathlib.Path(state_path)
