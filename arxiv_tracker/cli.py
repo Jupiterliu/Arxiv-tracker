@@ -343,11 +343,13 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
         # 6.5) 生成站点（如启用）
         page_url = None
         site_generated = False
+        site_requested = False
         try:
             from .sitegen import generate_site
             site_cfg = (raw_cfg.get("site") or {}) if 'raw_cfg' in locals() else {}
             sd = site_dir or site_cfg.get("dir")
             if sd and (site_cfg.get("enabled", False) or site_dir is not None):
+                site_requested = True
                 keep = int(site_cfg.get("keep_runs", 60))
                 title = site_cfg.get("title", "arXiv Results")
                 theme = site_cfg.get("theme", "light")
@@ -368,6 +370,8 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                 site_generated = True
         except Exception as e:
             click.secho(f"[Site] 生成失败: {e}", fg="red")
+            if site_requested:
+                raise
 
         pdf_path = ""
         if pdf_enabled:
