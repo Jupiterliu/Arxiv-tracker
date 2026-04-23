@@ -17,10 +17,10 @@
 ## 😮 项目亮点（Highlights）
 
 - 🔎 **多学科多主题检索**：支持 `cs.CV / cs.LG / cs.AI / cs.CL` 等分类，自由组合关键词；`logic: AND/OR` 控制“分类集合”与“关键词集合”的布尔关系
-- 🧠 **LLM 双语总结**：**英文一段 + 中文一段** 或两阶段摘要（TL;DR + Method Card + Discussion）
+- 🧠 **LLM 主题分类**：对抓取论文进行类别分析，输出“分类概览 + 每类总结”
 - 🔗 **自动提取链接**：Abs / PDF / 代码仓库 / 项目页
 - 📨 **邮件推送**：QQ SMTP（465/SSL 或 587/STARTTLS），支持多收件人
-- 🌐 **网页发布（GitHub Pages）**：自动生成美观 HTML，历史归档与折叠/展开
+- 🌐 **网页发布（GitHub Pages）**：按“类别 -> 论文列表”方式展示，支持历史归档与折叠/展开
 - ♻️ **去重 + 新鲜度**：仅推送“近 N 天 & 未发送过”的论文；支持**成功后再写入**的幂等防重
 - 📦 **OpenAI-Compatible LLM**：**DeepSeek / SiliconFlow 等统一配置**（一个 `base_url` + 一个 `api_key` 即可）
 - 🔁 **自动分页抓取**：避免每次只拿同一批前 N 条导致结果“用尽”
@@ -191,9 +191,9 @@ sort_order: "descending"
 # === 输出语言 ===
 lang: "both"                 # zh / en / both
 
-# === 摘要生成 ===
+# === 摘要生成（可关闭以节省 token） ===
 summary:
-  mode: "llm"                # none / heuristic / llm
+  mode: "none"               # none / heuristic / llm
   scope: "both"              # tldr / full / both
 
 # === LLM（OpenAI-Compatible，DeepSeek / SiliconFlow 均可） ===
@@ -206,7 +206,7 @@ llm:
   system_prompt_zh: |
     你是资深论文阅读助手...
 
-# === 可选：题目/摘要中文翻译 ===
+# === 可选：题目/摘要中文翻译（翻译工具，不走 LLM） ===
 translate:
   enabled: true
   lang: "zh"
