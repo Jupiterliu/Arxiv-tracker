@@ -319,3 +319,42 @@ def call_llm_categorize(
             })
         out["assignments"] = clean
     return out
+
+
+def call_llm_category_summary(
+    category_name: str,
+    items: List[Dict[str, Any]],
+    *,
+    base_url: str,
+    model: str,
+    api_key: str,
+    system_prompt: str = "",
+) -> str:
+    """
+    对某个类别下的论文做中文长总结。
+    """
+    compact = []
+    for it in items:
+        compact.append({
+            "title": it.get("title", ""),
+            "summary": (it.get("summary", "") or "")[:1200],
+        })
+
+    sys_prompt = system_prompt or "你是资深论文分析助手，擅长从多篇论文中提炼主题脉络与共性趋势。"
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content":
+            f"请对类别“{category_name}”下的论文做一段较详细的中文总结。\n"
+            "要求：\n"
+            "1) 说明该类别的主要研究主题与问题。\n"
+            "2) 概括常见方法路线与技术趋势。\n"
+            "3) 总结代表性结果/应用方向与潜在局限。\n"
+            "4) 直接输出纯文本，不要 JSON，不要 markdown 标题。\n\n"
+            f"DATA:\n{json.dumps(compact, ensure_ascii=False)}"
+        }
+    ]
+    text = _chat_completions_request(
+        base_url=base_url, api_key=api_key, model=model, messages=messages,
+        temperature=0.2, max_tokens=1200
+    )
+    return (text or "").strip()

@@ -7,6 +7,7 @@ from .parser import parse_feed
 from .output import save_json, save_markdown
 from .translator import translate_item
 from .categorizer import categorize_items
+from .llm import call_llm_category_summary
 from .email_template import render_email_html
 from .exporter import md_to_pdf
 from .ids import canonical_arxiv_id
@@ -333,6 +334,28 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
 
         # 4.5) 论文分类（基于标题+摘要由 LLM 推理，强制 2~5 类 + 其他）
         categorization = categorize_items(items, llm_cfg=llm_cfg) if items else {"overview_zh": "", "groups": []}
+        # 4.6) 每个类别用 LLM 进行总结（可长一些）
+        if items and categorization.get("groups"):
+            api_key = (llm_cfg.get("api_key")
+                       or os.getenv(llm_cfg.get("api_key_env") or "OPENAI_API_KEY", ""))
+            if api_key:
+                by_id = {it.get("id"): it for it in items if it.get("id")}
+                for g in categorization.get("groups", []):
+                    citems = [by_id[pid] for pid in (g.get("paper_ids") or []) if pid in by_id]
+                    if not citems:
+                        g["summary_zh"] = g.get("summary_zh") or "该类别暂无论文。"
+                        continue
+                    try:
+                        g["summary_zh"] = call_llm_category_summary(
+                            category_name=g.get("name_zh") or "未命名类别",
+                            items=citems,
+                            base_url=llm_cfg.get("base_url", ""),
+                            model=llm_cfg.get("model", ""),
+                            api_key=api_key,
+                            system_prompt=llm_cfg.get("system_prompt_categorize_zh", ""),
+                        ) or g.get("summary_zh", "")
+                    except Exception as e:
+                        click.secho(f"[CategorySummary] 失败 {g.get('name_zh','')}: {e}", fg="yellow")
 
         # 5) 终端预览
         if not items:
