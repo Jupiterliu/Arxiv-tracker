@@ -246,3 +246,81 @@ DATA:
         if "comments_zh" in data and isinstance(data["comments_zh"], str):
             out["comments_zh"] = data["comments_zh"].strip()
     return out
+
+
+def call_llm_categorize(
+    items: List[Dict[str, Any]],
+    *,
+    base_url: str,
+    model: str,
+    api_key: str,
+    system_prompt: str = "",
+) -> Dict[str, Any]:
+    """
+    对论文做固定类别分类，并输出总览与逐篇归类结果。
+    返回：
+    {
+      "overview_zh": "...",
+      "assignments": [
+        {"idx": 1, "category": "..."},
+      ]
+    }
+    """
+    compact = []
+    for idx, it in enumerate(items, 1):
+        compact.append({
+            "idx": idx,
+            "id": it.get("id"),
+            "title": it.get("title", ""),
+            "summary": (it.get("summary", "") or "")[:800],
+            "primary_category": it.get("primary_category", ""),
+            "categories": it.get("categories", []),
+        })
+
+    sys_prompt = system_prompt or (
+        "你是论文安全方向分析助手。你的任务是根据论文标题与摘要做严格分类。"
+    )
+    fixed_categories = [
+        "传统网络安全（密码、系统）",
+        "传统人工智能安全（机器学习模型）",
+        "大模型安全（LLM、VLM、MLLM、VLA等的安全）",
+        "人工智能/大模型应用",
+        "其他",
+    ]
+
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content":
+            "请把下面论文逐篇分类到指定类别。\n"
+            "要求：\n"
+            "1) 每篇论文只能归到一个类别。\n"
+            "2) 实在无法分类时才放到“其他”。\n"
+            "3) 不要遗漏论文，必须覆盖全部 idx。\n"
+            "4) 仅使用以下类别（不能新造类别）：\n"
+            f"{json.dumps(fixed_categories, ensure_ascii=False)}\n"
+            "5) 只返回严格 JSON，格式：\n"
+            '{"overview_zh":"...", "assignments":[{"idx":1,"category":"..."}]}\n\n'
+            f"DATA:\n{json.dumps(compact, ensure_ascii=False)}"
+        }
+    ]
+    text = _chat_completions_request(
+        base_url=base_url, api_key=api_key, model=model, messages=messages,
+        temperature=0.1, max_tokens=4000
+    )
+    data = _json_loose(text)
+    out = {"overview_zh": "", "assignments": []}
+    out["overview_zh"] = (data.get("overview_zh") or "").strip()
+    assignments = data.get("assignments") or []
+    if isinstance(assignments, list):
+        clean = []
+        for a in assignments:
+            if not isinstance(a, dict):
+                continue
+            idx = a.get("idx")
+            cat = (a.get("category") or "").strip()
+            clean.append({
+                "idx": int(idx) if isinstance(idx, (int, float, str)) and str(idx).isdigit() else -1,
+                "category": cat,
+            })
+        out["assignments"] = clean
+    return out
