@@ -1,87 +1,33 @@
 # -*- coding: utf-8 -*-
-import os, datetime, html
+import os
+import re
+import html
+import datetime
 from typing import Dict, List, Any, Optional
 
-import re
 try:
     from markdown import markdown as _md
 except Exception:
     _md = None
 
-def _esc(x):  # 保留你的实现
-    import html
-    return html.escape(x or "", quote=True)
-
-def _md2html(md: str) -> str:
-    if not md: return ""
-    if _md:
-        return _md(md, extensions=["extra", "sane_lists", "tables"])
-    return "<pre class='mono'>" + _esc(md) + "</pre>"
-
-# --- 语言/内容判断 & 文本处理 ---
-_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
-def _has_cjk(s: str) -> bool:
-    return bool(_CJK_RE.search(s or ""))
-
-def _first_sentence(text: str) -> str:
-    if not text: return ""
-    t = re.sub(r"\s+", " ", text.strip())
-    parts = re.split(r"(?<=[。！？.!?])\s+", t)
-    return parts[0] if parts else t
-
-def _strip_format(md: str) -> str:
-    """
-    去掉冗余行：**Method Card...**, **Discussion...**, **Links**...
-    """
-    if not md: return ""
-    out = []
-    for line in md.splitlines():
-        L = line.strip().lower()
-        if L.startswith("**method card") or L.startswith("**discussion"):
-            continue
-        if L.startswith("- **links**"):
-            continue
-        out.append(line)
-    return "\n".join(out)
-
-def _localize_md_to_zh(md: str) -> str:
-    """
-    仅把标签本地化，内容不硬翻译（避免引入错误）。英文值保留。
-    """
-    repl = {
-        "**Task / Problem**:": "**任务 / 问题**：",
-        "**Core Idea**:": "**核心思路**：",
-        "**Data / Benchmarks**:": "**数据 / 基准**：",
-        "**Venue**:": "**会议 / 期刊**：",
-    }
-    s = md
-    for k, v in repl.items():
-        s = s.replace(k, v)
-    return s
-    
-try:
-    # 用于把 full_md 渲染成真正的 HTML 列表/加粗等
-    from markdown import markdown as _md
-except Exception:
-    _md = None
 
 def _esc(x: Optional[str]) -> str:
     return html.escape(x or "", quote=True)
 
+
 def _md2html(md: str) -> str:
-    if not md: return ""
+    if not md:
+        return ""
     if _md:
         return _md(md, extensions=["extra", "sane_lists", "tables"])
-    # 兜底（没有 markdown 包时，退化为等宽块）
     return "<pre class='mono'>" + _esc(md) + "</pre>"
 
-def _strip_redundant_links(md: str) -> str:
-    out = []
-    for line in (md or "").splitlines():
-        if line.strip().lower().startswith("- **links**"):
-            continue
-        out.append(line)
-    return "\n".join(out)
+
+def _slug(s: str) -> str:
+    t = re.sub(r"\s+", "-", (s or "").strip().lower())
+    t = re.sub(r"[^a-z0-9\-\u4e00-\u9fff]", "", t)
+    return t or "group"
+
 
 def _css(accent: str = "#2563eb") -> str:
     return f"""
@@ -93,7 +39,7 @@ def _css(accent: str = "#2563eb") -> str:
 }}
 *{{box-sizing:border-box}} body{{margin:0;background:var(--bg);color:var(--text);
   font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;line-height:1.6;}}
-.container{{max-width:900px;margin:0 auto;padding:18px;}}
+.container{{max-width:1100px;margin:0 auto;padding:18px;}}
 .header{{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0 16px;flex-wrap:wrap}}
 h1{{font-size:22px;margin:0}}
 .badge{{font-size:12px;color:#111827;background:var(--acc);padding:2px 8px;border-radius:999px}}
@@ -105,31 +51,65 @@ h1{{font-size:22px;margin:0}}
 summary{{cursor:pointer;color:var(--acc)}}
 .mono{{white-space:pre-wrap;background:rgba(2,6,23,.03);border:1px solid var(--border);padding:10px;border-radius:10px}}
 .row{{display:grid;grid-template-columns:1fr;gap:12px}}
-@media (min-width: 860px) {{
-  .row-2{{grid-template-columns:1fr 1fr}}
-}}
 .footer{{color:var(--muted);font-size:13px;margin:20px 0 10px}}
 .hr{{height:1px;background:var(--border);margin:14px 0}}
 .history-list a{{display:block;color:var(--acc);text-decoration:none;margin:4px 0}}
 .controls{{display:flex;gap:8px;align-items:center}}
 .btn{{border:1px solid var(--border);background:var(--card);padding:6px 10px;border-radius:10px;cursor:pointer;color:var(--text)}}
 .btn:hover{{border-color:var(--acc)}}
+.layout{{display:grid;grid-template-columns:1fr;gap:14px;margin-top:12px}}
+.sidebar{{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;align-self:start}}
+.sidebar-title{{font-weight:700;margin:0 0 8px 0}}
+.toc a{{display:block;color:var(--acc);text-decoration:none;padding:3px 0;font-size:14px}}
+.maincol{{min-width:0}}
+.chips{{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}}
+.chip{{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;line-height:1.6;border:1px solid transparent}}
+@media (min-width: 980px) {{
+  .layout{{grid-template-columns:260px minmax(0,1fr)}}
+  .sidebar{{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}}
+}}
 """
+
 
 def _join_links(it: Dict[str, Any]) -> str:
     parts = []
-    if it.get("html_url"): parts.append(f'<a href="{_esc(it["html_url"])}">Abs</a>')
-    if it.get("pdf_url"):  parts.append(f'<a href="{_esc(it["pdf_url"])}">PDF</a>')
+    if it.get("html_url"):
+        parts.append(f'<a href="{_esc(it["html_url"])}">Abs</a>')
+    if it.get("pdf_url"):
+        parts.append(f'<a href="{_esc(it["pdf_url"])}">PDF</a>')
     if it.get("code_urls"):
-        for i,u in enumerate(it["code_urls"][:3]): parts.append(f'<a href="{_esc(u)}">Code{i+1}</a>')
+        for i, u in enumerate(it["code_urls"][:3]):
+            parts.append(f'<a href="{_esc(u)}">Code{i+1}</a>')
     if it.get("project_urls"):
-        for i,u in enumerate(it["project_urls"][:2]): parts.append(f'<a href="{_esc(u)}">Project{i+1}</a>')
+        for i, u in enumerate(it["project_urls"][:2]):
+            parts.append(f'<a href="{_esc(u)}">Project{i+1}</a>')
     return " · ".join(parts)
 
-def _card(it: Dict[str, Any],
-          trans_zh: Optional[Dict[str,str]],
-          sum_zh: Optional[Dict[str,str]],
-          sum_en: Optional[Dict[str,str]]) -> str:
+
+def _chip_color(i: int) -> str:
+    palette = [
+        "#fee2e2", "#ffedd5", "#fef9c3", "#dcfce7", "#dbeafe",
+        "#ede9fe", "#fce7f3", "#cffafe", "#e2e8f0", "#fae8ff",
+    ]
+    return palette[i % len(palette)]
+
+
+def _render_chips(values: List[str], color_map: Dict[str, str]) -> str:
+    if not values:
+        return ""
+    chips = []
+    for v in values:
+        bg = color_map.get(v, "#e2e8f0")
+        chips.append(f'<span class="chip" style="background:{bg}">{_esc(v)}</span>')
+    return '<div class="chips">' + "".join(chips) + "</div>"
+
+
+def _card(
+    it: Dict[str, Any],
+    trans_zh: Optional[Dict[str, str]],
+    sum_zh: Optional[Dict[str, str]],
+    sum_en: Optional[Dict[str, str]],
+) -> str:
     t = it.get("title") or ""
     au = ", ".join(it.get("authors") or [])
     venue = it.get("venue_inferred") or (it.get("journal_ref") or "")
@@ -139,15 +119,13 @@ def _card(it: Dict[str, Any],
     absu = it.get("summary") or ""
 
     zh_title = (trans_zh or {}).get("title_zh")
-    zh_abs   = (trans_zh or {}).get("summary_zh")
-
-    # 新的双语总结（来自 summarizer）
-    digest_en = (sum_en or {}).get("digest_en") or (sum_zh or {}).get("digest_en") or ""
-    digest_zh = (sum_zh or {}).get("digest_zh") or (sum_en or {}).get("digest_zh") or ""
+    zh_abs = (trans_zh or {}).get("summary_zh")
 
     parts = [f'<div class="card">', f'<div class="title">{_esc(t)}</div>']
+    kw_tags = it.get("matched_keywords") or []
+    if kw_tags:
+        parts.append(_render_chips(kw_tags, it.get("_keyword_color_map") or {}))
 
-    # 元信息分行
     parts.append(f'<div class="meta-line">Authors: {_esc(au)}</div>')
     if venue:
         parts.append(f'<div class="meta-line">Venue: {_esc(venue)}</div>')
@@ -155,29 +133,20 @@ def _card(it: Dict[str, Any],
     if comm:
         parts.append(f'<div class="meta-line">Comments: {_esc(comm)}</div>')
 
-    # 链接
     links = _join_links(it)
-    if links: parts.append(f'<div class="links" style="margin-top:8px">{links}</div>')
+    if links:
+        parts.append(f'<div class="links" style="margin-top:8px">{links}</div>')
 
-    # 摘要（英文原文，可折叠）
     if absu:
         parts.append('<details class="detail"><summary>Abstract</summary>')
         parts.append(f'<div class="mono">{_esc(absu)}</div></details>')
 
-    # 中文标题/摘要（可选）
     if zh_abs or zh_title:
         parts.append('<details class="detail"><summary>中文标题/摘要</summary>')
-        if zh_title: parts.append(f'<div class="mono"><b>标题：</b>{_esc(zh_title)}</div>')
-        if zh_abs:   parts.append(f'<div class="mono" style="margin-top:8px">{_esc(zh_abs)}</div>')
-        parts.append('</details>')
-
-    # ✅ 只渲染双语总结（英文→中文），去掉 TL;DR & 方法卡
-    if digest_en or digest_zh:
-        parts.append('<details class="detail"><summary>Summary / 总结</summary>')
-        if digest_en:
-            parts.append(f'<div class="mono">{_esc(digest_en)}</div>')
-        if digest_zh:
-            parts.append(f'<div class="mono" style="margin-top:8px">{_esc(digest_zh)}</div>')
+        if zh_title:
+            parts.append(f'<div class="mono"><b>标题：</b>{_esc(zh_title)}</div>')
+        if zh_abs:
+            parts.append(f'<div class="mono" style="margin-top:8px">{_esc(zh_abs)}</div>')
         parts.append('</details>')
 
     parts.append('</div>')
@@ -186,9 +155,11 @@ def _card(it: Dict[str, Any],
 
 def _write(path: str, text: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f: f.write(text)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
 
-def _build_page(title: str, sub: str, cards_html: str, history_html: str,
+
+def _build_page(title: str, sub: str, toc_html: str, cards_html: str, history_html: str,
                 theme_mode: str, accent: str) -> str:
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     js = f"""
@@ -244,7 +215,13 @@ def _build_page(title: str, sub: str, cards_html: str, history_html: str,
     </div>
     <div class="hr"></div>
     <div>{_esc(sub)}</div>
-    <div class="row">{cards_html}</div>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-title">分类目录</div>
+        <div class="toc">{toc_html}</div>
+      </aside>
+      <div class="maincol row">{cards_html}</div>
+    </div>
     <details style="margin-top:16px" class="detail"><summary>History</summary>
       <div class="history-list">{history_html}</div>
     </details>
@@ -252,6 +229,7 @@ def _build_page(title: str, sub: str, cards_html: str, history_html: str,
   </div>
 </body></html>
 """
+
 
 def _history_list(archive_dir: str, keep: int) -> List[str]:
     if not os.path.isdir(archive_dir):
@@ -261,38 +239,75 @@ def _history_list(archive_dir: str, keep: int) -> List[str]:
     files = files[:keep]
     links = []
     for f in files:
-        date = f.replace(".html","")
+        date = f.replace(".html", "")
         links.append(f'<a href="archive/{_esc(f)}">{_esc(date)}</a>')
     return links
 
-def generate_site(items: List[Dict[str,Any]],
-                  summaries_zh: Dict[str,Dict[str,str]],
-                  summaries_en: Dict[str,Dict[str,str]],
-                  translations: Dict[str,Dict[str,str]],
+
+def generate_site(items: List[Dict[str, Any]],
+                  summaries_zh: Dict[str, Dict[str, str]],
+                  summaries_en: Dict[str, Dict[str, str]],
+                  translations: Dict[str, Dict[str, str]],
+                  categorization: Dict[str, Any],
+                  configured_keywords: Optional[List[str]],
                   site_dir: str, site_title: str = "arXiv Results",
                   keep_runs: int = 60,
                   theme: str = "light",
-                  accent: Optional[str] = None) -> Dict[str,str]:
+                  accent: Optional[str] = None) -> Dict[str, str]:
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
     archive_dir = os.path.join(site_dir, "archive")
     os.makedirs(archive_dir, exist_ok=True)
     open(os.path.join(site_dir, ".nojekyll"), "w").close()
 
-    cards = []
+    by_id = {it.get("id"): it for it in items if it.get("id")}
+    groups = (categorization or {}).get("groups") or []
+    overview = (categorization or {}).get("overview_zh") or ""
+    all_keywords = list(configured_keywords or [])
+    kw_color_map = {kw: _chip_color(i) for i, kw in enumerate(all_keywords)}
     for it in items:
-        sid = it.get("id") or ""
-        cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
+        it["_keyword_color_map"] = kw_color_map
+
+    cards = []
+    toc_links = []
+    if overview:
+        cards.append(f'<div class="card"><div class="title">分类概览</div><div class="mono">{_esc(overview)}</div></div>')
+
+    for i, g in enumerate(groups, 1):
+        gname = g.get("name_zh") or "未命名类别"
+        gsum = g.get("summary_zh") or ""
+        paper_ids = g.get("paper_ids", []) or []
+        anchor = f"group-{i}-{_slug(gname)}"
+        toc_links.append(f'<a href="#{_esc(anchor)}">{i}. {_esc(gname)} ({len(paper_ids)})</a>')
+        cards.append(f'<div id="{_esc(anchor)}" class="card"><div class="title">类别：{_esc(gname)}</div>'
+                     + (f'<div class="mono">{_esc(gsum)}</div>' if gsum else '')
+                     + '</div>')
+        for pid in paper_ids:
+            it = by_id.get(pid)
+            if not it:
+                continue
+            sid = it.get("id") or ""
+            cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
+
     cards_html = "\n".join(cards)
+    if toc_links:
+        group_toc = "\n".join(toc_links)
+    else:
+        group_toc = '<span class="meta-line">暂无分类目录</span>'
+
+    keyword_box = ""
+    if all_keywords:
+        keyword_box = '<div class="detail" style="margin-top:12px"><div class="sidebar-title">关键词</div>' + _render_chips(all_keywords, kw_color_map) + '</div>'
+    toc_html = group_toc + keyword_box
     hist_html = "\n".join(_history_list(archive_dir, keep_runs))
 
     acc = (accent or "#2563eb").strip()
 
-    arch_html = _build_page(site_title, f"Snapshot: {stamp}", cards_html, history_html=hist_html,
+    arch_html = _build_page(site_title, f"Snapshot: {stamp}", toc_html, cards_html, history_html=hist_html,
                             theme_mode=theme, accent=acc)
     arch_path = os.path.join(archive_dir, f"{stamp}.html")
     _write(arch_path, arch_html)
 
-    index_html = _build_page(site_title, "Latest digest", cards_html, history_html=hist_html,
+    index_html = _build_page(site_title, "Latest digest", toc_html, cards_html, history_html=hist_html,
                              theme_mode=theme, accent=acc)
     index_path = os.path.join(site_dir, "index.html")
     _write(index_path, index_html)
