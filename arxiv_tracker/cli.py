@@ -5,10 +5,11 @@ from .query import build_search_query
 from .client import fetch_arxiv_feed
 from .parser import parse_feed
 from .output import save_json, save_markdown
-from .summarizer import build_two_stage_summary
-from .llm import call_llm_translate
+from .translator import translate_item
+from .categorizer import categorize_items
 from .email_template import render_email_html
 from .exporter import md_to_pdf
+from .ids import canonical_arxiv_id
 
 # 进程级防重：本进程内只允许发送一次
 _SENT_EMAIL = False
@@ -199,11 +200,11 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                     with open(state_path, "r", encoding="utf-8") as f:
                         j = json.load(f) or {}
                         if isinstance(j, dict) and "ids" in j:
-                            seen_ids = set(j.get("ids") or [])
+                            seen_ids = set(canonical_arxiv_id(x) for x in (j.get("ids") or []) if x)
                         elif isinstance(j, dict):
-                            seen_ids = set(j.keys())
+                            seen_ids = set(canonical_arxiv_id(x) for x in j.keys() if x)
                         elif isinstance(j, list):
-                            seen_ids = set(j)
+                            seen_ids = set(canonical_arxiv_id(x) for x in j if x)
             except Exception:
                 seen_ids = set()
 
@@ -215,6 +216,7 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
         max_pages = 20
         start = 0
         collected, reached_cutoff = [], False
+        collected_ids = set()
 
         for _page in range(max_pages):
             xml = fetch_arxiv_feed(
@@ -233,11 +235,15 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                     break
 
                 # 去重
-                aid = it.get("id")
+                aid = it.get("id_canonical") or canonical_arxiv_id(it.get("id") or "")
                 if unique_only and aid and aid in seen_ids:
+                    continue
+                if aid and aid in collected_ids:
                     continue
 
                 collected.append(it)
+                if aid:
+                    collected_ids.add(aid)
                 if len(collected) >= want_new:
                     break
 
@@ -291,41 +297,21 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
             except Exception as e:
                 click.secho(f"[Scrape] 补链失败 {(it.get('id') or '')[:18]}...: {e}", fg="yellow")
 
-        # 3) 摘要
+        # 3) 不再生成逐篇 summary（节省 token）
         summaries_zh, summaries_en = {}, {}
-        def _sum_for_lang(L):
-            out = {}
-            for it in items:
-                sid = it.get("id") or ""
-                out[sid] = build_two_stage_summary(item=it, mode=mode, lang=L, scope=scope, llm_cfg=llm_cfg)
-            return out
 
-        if lang in ("zh", "both"):
-            summaries_zh = _sum_for_lang("zh")
-        if lang in ("en", "both"):
-            summaries_en = _sum_for_lang("en")
-
-        # 4) 翻译（中文）
+        # 4) 翻译（中文，使用翻译工具而非 LLM）
         translations = {}
         if trans_cfg.get("enabled") and (trans_cfg.get("lang", "zh") == "zh"):
-            api_key = (llm_cfg.get("api_key")
-                       or os.getenv(llm_cfg.get("api_key_env") or "OPENAI_API_KEY", ""))
-            if not api_key:
-                click.secho("[Translate] 跳过：未找到 LLM API Key（配置 llm.api_key 或设置环境变量 {}）"
-                            .format(llm_cfg.get("api_key_env") or "OPENAI_API_KEY"), fg="yellow")
-            else:
-                for it in items:
-                    sid = it.get("id") or ""
-                    try:
-                        translations[sid] = call_llm_translate(
-                            item=it, target_lang="zh",
-                            base_url=llm_cfg.get("base_url", ""),
-                            model=llm_cfg.get("model", ""),
-                            api_key=api_key,
-                            system_prompt=llm_cfg.get("system_prompt_translate_zh", "")
-                        )
-                    except Exception as e:
-                        click.secho(f"[Translate] 失败 {sid[:18]}...: {e}", fg="red")
+            for it in items:
+                sid = it.get("id") or ""
+                try:
+                    translations[sid] = translate_item(it, target_lang="zh")
+                except Exception as e:
+                    click.secho(f"[Translate] 失败 {sid[:18]}...: {e}", fg="red")
+
+        # 4.5) 论文分类（使用 LLM 分析标题+摘要）
+        categorization = categorize_items(items, llm_cfg=llm_cfg) if items else {"overview_zh": "", "groups": []}
 
         # 5) 终端预览
         if not items:
@@ -357,11 +343,13 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
         # 6.5) 生成站点（如启用）
         page_url = None
         site_generated = False
+        site_requested = False
         try:
             from .sitegen import generate_site
             site_cfg = (raw_cfg.get("site") or {}) if 'raw_cfg' in locals() else {}
             sd = site_dir or site_cfg.get("dir")
             if sd and (site_cfg.get("enabled", False) or site_dir is not None):
+                site_requested = True
                 keep = int(site_cfg.get("keep_runs", 60))
                 title = site_cfg.get("title", "arXiv Results")
                 theme = site_cfg.get("theme", "light")
@@ -371,6 +359,7 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                     summaries_zh=summaries_zh or {},
                     summaries_en=summaries_en or {},
                     translations=translations or {},
+                    categorization=categorization or {},
                     site_dir=sd, site_title=title, keep_runs=keep,
                     theme=theme, accent=accent
                 )
@@ -381,6 +370,8 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                 site_generated = True
         except Exception as e:
             click.secho(f"[Site] 生成失败: {e}", fg="red")
+            if site_requested:
+                raise
 
         pdf_path = ""
         if pdf_enabled:
@@ -488,7 +479,7 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
             if unique_only and state_path and items and (site_generated or email_sent):
                 all_seen = set(seen_ids)
                 for it in items:
-                    aid = it.get("id")
+                    aid = it.get("id_canonical") or canonical_arxiv_id(it.get("id") or "")
                     if aid:
                         all_seen.add(aid)
                 p = pathlib.Path(state_path)
