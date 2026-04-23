@@ -3,44 +3,24 @@ from typing import Dict, Any, List
 import os
 
 from .llm import call_llm_categorize
-from .ids import canonical_arxiv_id
+
+FIXED_CATEGORIES = [
+    "传统网络安全（密码、系统）",
+    "传统人工智能安全（机器学习模型）",
+    "大模型安全（LLM、VLM、MLLM、VLA等的安全）",
+    "人工智能/大模型应用",
+    "其他",
+]
 
 
 def _fallback(items: List[Dict[str, Any]]) -> Dict[str, Any]:
-    groups: Dict[str, Dict[str, Any]] = {}
+    base = [{"name_zh": c, "summary_zh": "", "paper_ids": []} for c in FIXED_CATEGORIES]
     for it in items:
-        label = (it.get("primary_category") or "其他").strip()
-        if not label:
-            label = "其他"
-        g = groups.setdefault(label, {"name_zh": label, "summary_zh": "", "paper_ids": []})
-        if it.get("id"):
-            g["paper_ids"].append(it["id"])
-    base = list(groups.values())
-    # 强制 2~5 类
-    base = base[:5]
-    if len(base) < 2:
-        # 最简兜底：按顺序均分到 2 组
-        a, b = [], []
-        for i, it in enumerate(items):
-            if it.get("id"):
-                (a if i % 2 == 0 else b).append(it["id"])
-        base = [
-            {"name_zh": "主题1", "summary_zh": "自动兜底分组。", "paper_ids": a},
-            {"name_zh": "主题2", "summary_zh": "自动兜底分组。", "paper_ids": b},
-        ]
-
-    assigned = set()
-    for g in base:
-        for pid in g.get("paper_ids", []):
-            assigned.add(pid)
-    other = [it["id"] for it in items if it.get("id") and it["id"] not in assigned]
-    base.append({
-        "name_zh": "其他",
-        "summary_zh": "未被明确归类或跨主题的论文。",
-        "paper_ids": other,
-    })
+        rid = it.get("id")
+        if rid:
+            base[-1]["paper_ids"].append(rid)
     return {
-        "overview_zh": "本次抓取论文已按主题分类展示（含兜底分组）。",
+        "overview_zh": "本次抓取论文按固定五类展示（兜底时归入其他）。",
         "groups": base,
     }
 
@@ -62,52 +42,40 @@ def categorize_items(items: List[Dict[str, Any]], llm_cfg: Dict[str, Any]) -> Di
     except Exception:
         return _fallback(items)
 
-    by_id = {it.get("id"): it for it in items if it.get("id")}
-    id_alias_to_raw = {}
-    for it in items:
+    idx_to_raw = {}
+    for i, it in enumerate(items, 1):
         rid = it.get("id")
         if not rid:
             continue
-        id_alias_to_raw[str(rid)] = str(rid)
-        cid = canonical_arxiv_id(str(rid))
-        if cid:
-            id_alias_to_raw[cid] = str(rid)
+        idx_to_raw[i] = str(rid)
+
+    groups = [{"name_zh": c, "summary_zh": "", "paper_ids": []} for c in FIXED_CATEGORIES]
+    cat_to_group = {g["name_zh"]: g for g in groups}
     seen = set()
-    clean_groups = []
-    for g in data.get("groups", []):
-        ids = []
-        for pid in (g.get("paper_ids") or []):
-            raw = id_alias_to_raw.get(str(pid))
-            if not raw:
-                raw = id_alias_to_raw.get(canonical_arxiv_id(str(pid)))
-            if not raw or raw in seen:
-                continue
-            ids.append(raw)
-        if not ids:
+
+    for a in data.get("assignments", []):
+        idx = a.get("idx")
+        cat = a.get("category") or ""
+        raw = idx_to_raw.get(idx)
+        if not raw or raw in seen:
             continue
-        seen.update(ids)
-        clean_groups.append({
-            "name_zh": g.get("name_zh") or "未命名类别",
-            "summary_zh": g.get("summary_zh") or "",
-            "paper_ids": ids,
-        })
+        if cat not in cat_to_group:
+            cat = "其他"
+        cat_to_group[cat]["paper_ids"].append(raw)
+        seen.add(raw)
 
-    # 强制 2~5 个主类别
-    clean_groups = clean_groups[:5]
-    if len(clean_groups) < 2:
-        return _fallback(items)
-
-    # 其他：把漏掉的论文放到“其他”（强制存在）
+    # 未覆盖的论文强制进“其他”
     missing = [it["id"] for it in items if it.get("id") and it["id"] not in seen]
-    clean_groups.append({
-        "name_zh": "其他",
-        "summary_zh": "未被模型明确归类或跨主题的论文。",
-        "paper_ids": missing,
-    })
+    cat_to_group["其他"]["paper_ids"].extend(missing)
+
+    # 为前四类写简单总结
+    for g in groups[:-1]:
+        g["summary_zh"] = f"{g['name_zh']}：共 {len(g['paper_ids'])} 篇。"
+    groups[-1]["summary_zh"] = "其他：难以归入前四类或信息不足的论文。"
 
     return {
-        "overview_zh": data.get("overview_zh") or "本次抓取论文已按主题分类展示。",
-        "groups": clean_groups,
+        "overview_zh": data.get("overview_zh") or "本次抓取论文已按固定五类完成归类。",
+        "groups": groups,
     }
 
 
