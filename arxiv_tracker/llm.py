@@ -271,7 +271,7 @@ def call_llm_categorize(
         compact.append({
             "id": it.get("id"),
             "title": it.get("title", ""),
-            "summary": it.get("summary", ""),
+            "summary": (it.get("summary", "") or "")[:800],
             "primary_category": it.get("primary_category", ""),
             "categories": it.get("categories", []),
         })
@@ -289,14 +289,15 @@ def call_llm_categorize(
             "2) 生成总体导语（1~3句），说明本次抓取覆盖了哪些方向。\n"
             "3) 每个类别生成一段简短中文总结（1~3句）。\n"
             "4) 不要遗漏论文 id。\n"
-            "5) 只返回严格 JSON，格式：\n"
+            "5) paper_ids 里的 id 必须与输入 DATA 中的 id 完全一致（原样复制，不要改写）。\n"
+            "6) 只返回严格 JSON，格式：\n"
             '{"overview_zh":"...", "groups":[{"name_zh":"...", "summary_zh":"...", "paper_ids":["id1","id2"]}]}\n\n'
             f"DATA:\n{json.dumps(compact, ensure_ascii=False)}"
         }
     ]
     text = _chat_completions_request(
         base_url=base_url, api_key=api_key, model=model, messages=messages,
-        temperature=0.1, max_tokens=1600
+        temperature=0.1, max_tokens=4000
     )
     data = _json_loose(text)
     out = {"overview_zh": "", "groups": []}

@@ -3,6 +3,7 @@ from typing import Dict, Any, List
 import os
 
 from .llm import call_llm_categorize
+from .ids import canonical_arxiv_id
 
 
 def _fallback(items: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -38,10 +39,26 @@ def categorize_items(items: List[Dict[str, Any]], llm_cfg: Dict[str, Any]) -> Di
         return _fallback(items)
 
     by_id = {it.get("id"): it for it in items if it.get("id")}
+    id_alias_to_raw = {}
+    for it in items:
+        rid = it.get("id")
+        if not rid:
+            continue
+        id_alias_to_raw[str(rid)] = str(rid)
+        cid = canonical_arxiv_id(str(rid))
+        if cid:
+            id_alias_to_raw[cid] = str(rid)
     seen = set()
     clean_groups = []
     for g in data.get("groups", []):
-        ids = [pid for pid in (g.get("paper_ids") or []) if pid in by_id and pid not in seen]
+        ids = []
+        for pid in (g.get("paper_ids") or []):
+            raw = id_alias_to_raw.get(str(pid))
+            if not raw:
+                raw = id_alias_to_raw.get(canonical_arxiv_id(str(pid)))
+            if not raw or raw in seen:
+                continue
+            ids.append(raw)
         if not ids:
             continue
         seen.update(ids)
