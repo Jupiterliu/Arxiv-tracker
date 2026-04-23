@@ -1,92 +1,33 @@
 # -*- coding: utf-8 -*-
-import os, datetime, html
+import os
+import re
+import html
+import datetime
 from typing import Dict, List, Any, Optional
 
-import re
 try:
     from markdown import markdown as _md
 except Exception:
     _md = None
 
-def _esc(x):  # 保留你的实现
-    import html
-    return html.escape(x or "", quote=True)
-
-def _md2html(md: str) -> str:
-    if not md: return ""
-    if _md:
-        return _md(md, extensions=["extra", "sane_lists", "tables"])
-    return "<pre class='mono'>" + _esc(md) + "</pre>"
-
-# --- 语言/内容判断 & 文本处理 ---
-_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
-def _has_cjk(s: str) -> bool:
-    return bool(_CJK_RE.search(s or ""))
-
-def _first_sentence(text: str) -> str:
-    if not text: return ""
-    t = re.sub(r"\s+", " ", text.strip())
-    parts = re.split(r"(?<=[。！？.!?])\s+", t)
-    return parts[0] if parts else t
-
-def _strip_format(md: str) -> str:
-    """
-    去掉冗余行：**Method Card...**, **Discussion...**, **Links**...
-    """
-    if not md: return ""
-    out = []
-    for line in md.splitlines():
-        L = line.strip().lower()
-        if L.startswith("**method card") or L.startswith("**discussion"):
-            continue
-        if L.startswith("- **links**"):
-            continue
-        out.append(line)
-    return "\n".join(out)
-
-def _localize_md_to_zh(md: str) -> str:
-    """
-    仅把标签本地化，内容不硬翻译（避免引入错误）。英文值保留。
-    """
-    repl = {
-        "**Task / Problem**:": "**任务 / 问题**：",
-        "**Core Idea**:": "**核心思路**：",
-        "**Data / Benchmarks**:": "**数据 / 基准**：",
-        "**Venue**:": "**会议 / 期刊**：",
-    }
-    s = md
-    for k, v in repl.items():
-        s = s.replace(k, v)
-    return s
-    
-try:
-    # 用于把 full_md 渲染成真正的 HTML 列表/加粗等
-    from markdown import markdown as _md
-except Exception:
-    _md = None
 
 def _esc(x: Optional[str]) -> str:
     return html.escape(x or "", quote=True)
 
+
 def _md2html(md: str) -> str:
-    if not md: return ""
+    if not md:
+        return ""
     if _md:
         return _md(md, extensions=["extra", "sane_lists", "tables"])
-    # 兜底（没有 markdown 包时，退化为等宽块）
     return "<pre class='mono'>" + _esc(md) + "</pre>"
 
-def _strip_redundant_links(md: str) -> str:
-    out = []
-    for line in (md or "").splitlines():
-        if line.strip().lower().startswith("- **links**"):
-            continue
-        out.append(line)
-    return "\n".join(out)
 
 def _slug(s: str) -> str:
     t = re.sub(r"\s+", "-", (s or "").strip().lower())
     t = re.sub(r"[^a-z0-9\-\u4e00-\u9fff]", "", t)
     return t or "group"
+
 
 def _css(accent: str = "#2563eb") -> str:
     return f"""
@@ -98,7 +39,7 @@ def _css(accent: str = "#2563eb") -> str:
 }}
 *{{box-sizing:border-box}} body{{margin:0;background:var(--bg);color:var(--text);
   font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;line-height:1.6;}}
-.container{{max-width:900px;margin:0 auto;padding:18px;}}
+.container{{max-width:1100px;margin:0 auto;padding:18px;}}
 .header{{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0 16px;flex-wrap:wrap}}
 h1{{font-size:22px;margin:0}}
 .badge{{font-size:12px;color:#111827;background:var(--acc);padding:2px 8px;border-radius:999px}}
@@ -110,9 +51,6 @@ h1{{font-size:22px;margin:0}}
 summary{{cursor:pointer;color:var(--acc)}}
 .mono{{white-space:pre-wrap;background:rgba(2,6,23,.03);border:1px solid var(--border);padding:10px;border-radius:10px}}
 .row{{display:grid;grid-template-columns:1fr;gap:12px}}
-@media (min-width: 860px) {{
-  .row-2{{grid-template-columns:1fr 1fr}}
-}}
 .footer{{color:var(--muted);font-size:13px;margin:20px 0 10px}}
 .hr{{height:1px;background:var(--border);margin:14px 0}}
 .history-list a{{display:block;color:var(--acc);text-decoration:none;margin:4px 0}}
@@ -130,20 +68,28 @@ summary{{cursor:pointer;color:var(--acc)}}
 }}
 """
 
+
 def _join_links(it: Dict[str, Any]) -> str:
     parts = []
-    if it.get("html_url"): parts.append(f'<a href="{_esc(it["html_url"])}">Abs</a>')
-    if it.get("pdf_url"):  parts.append(f'<a href="{_esc(it["pdf_url"])}">PDF</a>')
+    if it.get("html_url"):
+        parts.append(f'<a href="{_esc(it["html_url"])}">Abs</a>')
+    if it.get("pdf_url"):
+        parts.append(f'<a href="{_esc(it["pdf_url"])}">PDF</a>')
     if it.get("code_urls"):
-        for i,u in enumerate(it["code_urls"][:3]): parts.append(f'<a href="{_esc(u)}">Code{i+1}</a>')
+        for i, u in enumerate(it["code_urls"][:3]):
+            parts.append(f'<a href="{_esc(u)}">Code{i+1}</a>')
     if it.get("project_urls"):
-        for i,u in enumerate(it["project_urls"][:2]): parts.append(f'<a href="{_esc(u)}">Project{i+1}</a>')
+        for i, u in enumerate(it["project_urls"][:2]):
+            parts.append(f'<a href="{_esc(u)}">Project{i+1}</a>')
     return " · ".join(parts)
 
-def _card(it: Dict[str, Any],
-          trans_zh: Optional[Dict[str,str]],
-          sum_zh: Optional[Dict[str,str]],
-          sum_en: Optional[Dict[str,str]]) -> str:
+
+def _card(
+    it: Dict[str, Any],
+    trans_zh: Optional[Dict[str, str]],
+    sum_zh: Optional[Dict[str, str]],
+    sum_en: Optional[Dict[str, str]],
+) -> str:
     t = it.get("title") or ""
     au = ", ".join(it.get("authors") or [])
     venue = it.get("venue_inferred") or (it.get("journal_ref") or "")
@@ -153,11 +99,10 @@ def _card(it: Dict[str, Any],
     absu = it.get("summary") or ""
 
     zh_title = (trans_zh or {}).get("title_zh")
-    zh_abs   = (trans_zh or {}).get("summary_zh")
+    zh_abs = (trans_zh or {}).get("summary_zh")
 
     parts = [f'<div class="card">', f'<div class="title">{_esc(t)}</div>']
 
-    # 元信息分行
     parts.append(f'<div class="meta-line">Authors: {_esc(au)}</div>')
     if venue:
         parts.append(f'<div class="meta-line">Venue: {_esc(venue)}</div>')
@@ -165,20 +110,20 @@ def _card(it: Dict[str, Any],
     if comm:
         parts.append(f'<div class="meta-line">Comments: {_esc(comm)}</div>')
 
-    # 链接
     links = _join_links(it)
-    if links: parts.append(f'<div class="links" style="margin-top:8px">{links}</div>')
+    if links:
+        parts.append(f'<div class="links" style="margin-top:8px">{links}</div>')
 
-    # 摘要（英文原文，可折叠）
     if absu:
         parts.append('<details class="detail"><summary>Abstract</summary>')
         parts.append(f'<div class="mono">{_esc(absu)}</div></details>')
 
-    # 中文标题/摘要（可选）
     if zh_abs or zh_title:
         parts.append('<details class="detail"><summary>中文标题/摘要</summary>')
-        if zh_title: parts.append(f'<div class="mono"><b>标题：</b>{_esc(zh_title)}</div>')
-        if zh_abs:   parts.append(f'<div class="mono" style="margin-top:8px">{_esc(zh_abs)}</div>')
+        if zh_title:
+            parts.append(f'<div class="mono"><b>标题：</b>{_esc(zh_title)}</div>')
+        if zh_abs:
+            parts.append(f'<div class="mono" style="margin-top:8px">{_esc(zh_abs)}</div>')
         parts.append('</details>')
 
     parts.append('</div>')
@@ -187,7 +132,9 @@ def _card(it: Dict[str, Any],
 
 def _write(path: str, text: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f: f.write(text)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
 
 def _build_page(title: str, sub: str, toc_html: str, cards_html: str, history_html: str,
                 theme_mode: str, accent: str) -> str:
@@ -260,6 +207,7 @@ def _build_page(title: str, sub: str, toc_html: str, cards_html: str, history_ht
 </body></html>
 """
 
+
 def _history_list(archive_dir: str, keep: int) -> List[str]:
     if not os.path.isdir(archive_dir):
         return []
@@ -268,19 +216,20 @@ def _history_list(archive_dir: str, keep: int) -> List[str]:
     files = files[:keep]
     links = []
     for f in files:
-        date = f.replace(".html","")
+        date = f.replace(".html", "")
         links.append(f'<a href="archive/{_esc(f)}">{_esc(date)}</a>')
     return links
 
-def generate_site(items: List[Dict[str,Any]],
-                  summaries_zh: Dict[str,Dict[str,str]],
-                  summaries_en: Dict[str,Dict[str,str]],
-                  translations: Dict[str,Dict[str,str]],
+
+def generate_site(items: List[Dict[str, Any]],
+                  summaries_zh: Dict[str, Dict[str, str]],
+                  summaries_en: Dict[str, Dict[str, str]],
+                  translations: Dict[str, Dict[str, str]],
                   categorization: Dict[str, Any],
                   site_dir: str, site_title: str = "arXiv Results",
                   keep_runs: int = 60,
                   theme: str = "light",
-                  accent: Optional[str] = None) -> Dict[str,str]:
+                  accent: Optional[str] = None) -> Dict[str, str]:
     stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
     archive_dir = os.path.join(site_dir, "archive")
     os.makedirs(archive_dir, exist_ok=True)
@@ -309,6 +258,7 @@ def generate_site(items: List[Dict[str,Any]],
                 continue
             sid = it.get("id") or ""
             cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
+
     cards_html = "\n".join(cards)
     toc_html = "\n".join(toc_links) if toc_links else '<span class="meta-line">暂无分类目录</span>'
     hist_html = "\n".join(_history_list(archive_dir, keep_runs))
