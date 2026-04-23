@@ -15,9 +15,33 @@ def _fallback(items: List[Dict[str, Any]]) -> Dict[str, Any]:
         g = groups.setdefault(label, {"name_zh": label, "summary_zh": "", "paper_ids": []})
         if it.get("id"):
             g["paper_ids"].append(it["id"])
+    base = list(groups.values())
+    # 强制 2~5 类
+    base = base[:5]
+    if len(base) < 2:
+        # 最简兜底：按顺序均分到 2 组
+        a, b = [], []
+        for i, it in enumerate(items):
+            if it.get("id"):
+                (a if i % 2 == 0 else b).append(it["id"])
+        base = [
+            {"name_zh": "主题1", "summary_zh": "自动兜底分组。", "paper_ids": a},
+            {"name_zh": "主题2", "summary_zh": "自动兜底分组。", "paper_ids": b},
+        ]
+
+    assigned = set()
+    for g in base:
+        for pid in g.get("paper_ids", []):
+            assigned.add(pid)
+    other = [it["id"] for it in items if it.get("id") and it["id"] not in assigned]
+    base.append({
+        "name_zh": "其他",
+        "summary_zh": "未被明确归类或跨主题的论文。",
+        "paper_ids": other,
+    })
     return {
-        "overview_zh": "本次抓取论文按 arXiv 学科标签进行分组展示。",
-        "groups": list(groups.values())[:10],
+        "overview_zh": "本次抓取论文已按主题分类展示（含兜底分组）。",
+        "groups": base,
     }
 
 
@@ -68,18 +92,22 @@ def categorize_items(items: List[Dict[str, Any]], llm_cfg: Dict[str, Any]) -> Di
             "paper_ids": ids,
         })
 
-    # 把漏掉的论文放到“其他”
+    # 强制 2~5 个主类别
+    clean_groups = clean_groups[:5]
+    if len(clean_groups) < 2:
+        return _fallback(items)
+
+    # 其他：把漏掉的论文放到“其他”（强制存在）
     missing = [it["id"] for it in items if it.get("id") and it["id"] not in seen]
-    if missing:
-        clean_groups.append({
-            "name_zh": "其他",
-            "summary_zh": "未被模型明确归类的论文。",
-            "paper_ids": missing,
-        })
+    clean_groups.append({
+        "name_zh": "其他",
+        "summary_zh": "未被模型明确归类或跨主题的论文。",
+        "paper_ids": missing,
+    })
 
     return {
         "overview_zh": data.get("overview_zh") or "本次抓取论文已按主题分类展示。",
-        "groups": clean_groups[:10],
+        "groups": clean_groups,
     }
 
 

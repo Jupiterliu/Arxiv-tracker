@@ -285,12 +285,13 @@ def call_llm_categorize(
         {"role": "user", "content":
             "请对下面论文进行主题分类。\n"
             "要求：\n"
-            "1) 输出 2~10 个类别，每篇论文只能归到一个类别。\n"
+            "1) 输出 2~5 个类别（不含“其他”），每篇论文只能归到一个类别。\n"
             "2) 生成总体导语（1~3句），说明本次抓取覆盖了哪些方向。\n"
             "3) 每个类别生成一段简短中文总结（1~3句）。\n"
             "4) 不要遗漏论文 id。\n"
             "5) paper_ids 里的 id 必须与输入 DATA 中的 id 完全一致（原样复制，不要改写）。\n"
-            "6) 只返回严格 JSON，格式：\n"
+            "6) 返回的 groups 数量必须在 2~5 之间。\n"
+            "7) 只返回严格 JSON，格式：\n"
             '{"overview_zh":"...", "groups":[{"name_zh":"...", "summary_zh":"...", "paper_ids":["id1","id2"]}]}\n\n'
             f"DATA:\n{json.dumps(compact, ensure_ascii=False)}"
         }

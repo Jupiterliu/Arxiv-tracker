@@ -6,7 +6,7 @@ from .client import fetch_arxiv_feed
 from .parser import parse_feed
 from .output import save_json, save_markdown
 from .translator import translate_item
-from .categorizer import categorize_by_keywords
+from .categorizer import categorize_items
 from .email_template import render_email_html
 from .exporter import md_to_pdf
 from .ids import canonical_arxiv_id
@@ -331,8 +331,8 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                 except Exception as e:
                     click.secho(f"[Translate] 失败 {sid[:18]}...: {e}", fg="red")
 
-        # 4.5) 论文分类（基于配置关键词固定分 5 类，不使用“其他”分类）
-        categorization = categorize_by_keywords(items, configured_keywords, num_groups=5) if items else {"overview_zh": "", "groups": []}
+        # 4.5) 论文分类（基于标题+摘要由 LLM 推理，强制 2~5 类 + 其他）
+        categorization = categorize_items(items, llm_cfg=llm_cfg) if items else {"overview_zh": "", "groups": []}
 
         # 5) 终端预览
         if not items:
