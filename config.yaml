@@ -34,7 +34,7 @@ lang: "both"
 # —— 摘要设置 ——
 # mode: none / heuristic / llm
 summary:
-  mode: llm # mode: "heuristic"
+  mode: none # 已关闭逐篇 summary，节省 token
   # scope: tldr / full / both
   scope: "both"
 
@@ -62,7 +62,7 @@ llm:
   # OpenAI官网版本
   # provider: "openai"
   base_url: "https://api.openai.com/v1"
-  model: "gpt-4o-mini"
+  model: "gpt-5.4-mini"
   api_key_env: "OPENAI_COMPAT_API_KEY"
   # Deepseek的版本
   # base_url: "https://api.deepseek.com"
@@ -80,7 +80,7 @@ llm:
     包含研究动机、核心方法与关键实验结果。保持客观、术语准确；避免营销式表述。
     如有链接请保留，但不要在总结里重复链接。
 
-# —— 中文翻译设置（用 LLM 翻译 title/summary） ——
+# —— 中文翻译设置（使用翻译工具，不走 LLM） ——
 translate:
   enabled: true         # 是否启用
   lang: "zh"            # 目前只需中文；也可扩展 en/ja 等
