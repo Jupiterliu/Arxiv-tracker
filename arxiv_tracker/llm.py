@@ -358,3 +358,40 @@ def call_llm_category_summary(
         temperature=0.2, max_tokens=1200
     )
     return (text or "").strip()
+
+
+def call_llm_classify_paper(
+    item: Dict[str, Any],
+    *,
+    base_url: str,
+    model: str,
+    api_key: str,
+    categories: List[str],
+    system_prompt: str = "",
+) -> str:
+    """
+    对单篇论文做固定类别判定，返回类别名。
+    """
+    payload = {
+        "title": item.get("title", ""),
+        "summary": (item.get("summary", "") or "")[:1800],
+    }
+    sys_prompt = system_prompt or "你是安全方向论文分类助手。"
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content":
+            "请把下面这篇论文分类到给定类别中的一个。\n"
+            "要求：\n"
+            "1) 只能输出一个类别，必须从给定列表中选择；\n"
+            "2) 无法判断时输出“其他”；\n"
+            "3) 返回严格 JSON：{\"category\": \"...\"}\n\n"
+            f"CATEGORIES: {json.dumps(categories, ensure_ascii=False)}\n"
+            f"DATA: {json.dumps(payload, ensure_ascii=False)}"
+        }
+    ]
+    text = _chat_completions_request(
+        base_url=base_url, api_key=api_key, model=model, messages=messages,
+        temperature=0.0, max_tokens=120
+    )
+    data = _json_loose(text)
+    return (data.get("category") or "").strip()
