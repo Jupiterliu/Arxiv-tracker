@@ -81,3 +81,46 @@ def categorize_items(items: List[Dict[str, Any]], llm_cfg: Dict[str, Any]) -> Di
         "overview_zh": data.get("overview_zh") or "本次抓取论文已按主题分类展示。",
         "groups": clean_groups[:10],
     }
+
+
+def categorize_by_keywords(items: List[Dict[str, Any]], keywords: List[str], num_groups: int = 5) -> Dict[str, Any]:
+    """
+    基于配置关键词做固定分组（默认 5 类），不再使用“其他”分类。
+    """
+    kwords = [k.strip() for k in (keywords or []) if (k or "").strip()]
+    n = max(1, int(num_groups or 5))
+
+    # 若关键词不足，补默认占位，确保稳定输出 n 个分类
+    if len(kwords) < n:
+        kwords += [f"Topic-{i+1}" for i in range(n - len(kwords))]
+
+    buckets = [[] for _ in range(n)]
+    for i, kw in enumerate(kwords):
+        buckets[i % n].append(kw)
+
+    groups = []
+    for i, b in enumerate(buckets, 1):
+        name = f"主题{i}"
+        if b:
+            name = f"{name}：{b[0]}"
+        groups.append({
+            "name_zh": name,
+            "summary_zh": ("关键词：" + "、".join(b[:6])) if b else "关键词：—",
+            "paper_ids": []
+        })
+
+    # 分类：按 matched_keywords 命中数最大归类；若都未命中，则轮转分配，避免“其他”
+    for idx, it in enumerate(items):
+        mk = set(it.get("matched_keywords") or [])
+        scores = []
+        for b in buckets:
+            scores.append(len(mk.intersection(set(b))))
+        best = max(scores) if scores else 0
+        gid = scores.index(best) if best > 0 else (idx % n)
+        if it.get("id"):
+            groups[gid]["paper_ids"].append(it["id"])
+
+    return {
+        "overview_zh": f"本次论文按给定关键词划分为 {n} 个主题分类展示。",
+        "groups": groups
+    }
