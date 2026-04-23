@@ -272,9 +272,6 @@ def call_llm_categorize(
             "idx": idx,
             "id": it.get("id"),
             "title": it.get("title", ""),
-            "summary": (it.get("summary", "") or "")[:800],
-            "primary_category": it.get("primary_category", ""),
-            "categories": it.get("categories", []),
         })
 
     sys_prompt = system_prompt or (
@@ -285,20 +282,18 @@ def call_llm_categorize(
         "传统人工智能安全（机器学习模型）",
         "大模型安全（LLM、VLM、MLLM、VLA等的安全）",
         "人工智能/大模型应用",
-        "其他",
     ]
 
     messages = [
         {"role": "system", "content": sys_prompt},
         {"role": "user", "content":
-            "请把下面论文逐篇分类到指定类别。\n"
+            "请仅基于论文英文标题，把下面论文逐篇分类到指定类别。\n"
             "要求：\n"
             "1) 每篇论文只能归到一个类别。\n"
-            "2) 实在无法分类时才放到“其他”。\n"
-            "3) 不要遗漏论文，必须覆盖全部 idx。\n"
-            "4) 仅使用以下类别（不能新造类别）：\n"
+            "2) 不要遗漏论文，必须覆盖全部 idx。\n"
+            "3) 仅使用以下类别（不能新造类别）：\n"
             f"{json.dumps(fixed_categories, ensure_ascii=False)}\n"
-            "5) 只返回严格 JSON，格式：\n"
+            "4) 只返回严格 JSON，格式：\n"
             '{"overview_zh":"...", "assignments":[{"idx":1,"category":"..."}]}\n\n'
             f"DATA:\n{json.dumps(compact, ensure_ascii=False)}"
         }

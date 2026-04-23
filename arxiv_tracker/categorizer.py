@@ -9,18 +9,20 @@ FIXED_CATEGORIES = [
     "传统人工智能安全（机器学习模型）",
     "大模型安全（LLM、VLM、MLLM、VLA等的安全）",
     "人工智能/大模型应用",
-    "其他",
 ]
 
 
 def _fallback(items: List[Dict[str, Any]]) -> Dict[str, Any]:
     base = [{"name_zh": c, "summary_zh": "", "paper_ids": []} for c in FIXED_CATEGORIES]
+    rr = 0
     for it in items:
         rid = it.get("id")
         if rid:
-            base[-1]["paper_ids"].append(rid)
+            # 兜底时轮转分配，避免全部落到单一分类
+            base[rr % len(base)]["paper_ids"].append(rid)
+            rr += 1
     return {
-        "overview_zh": "本次抓取论文按固定五类展示（兜底时归入其他）。",
+        "overview_zh": "本次抓取论文按固定类别展示（兜底为均衡分配）。",
         "groups": base,
     }
 
@@ -60,21 +62,20 @@ def categorize_items(items: List[Dict[str, Any]], llm_cfg: Dict[str, Any]) -> Di
         if not raw or raw in seen:
             continue
         if cat not in cat_to_group:
-            cat = "其他"
+            cat = FIXED_CATEGORIES[-1]
         cat_to_group[cat]["paper_ids"].append(raw)
         seen.add(raw)
 
-    # 未覆盖的论文强制进“其他”
+    # 未覆盖的论文强制进入最后一个分类，避免遗漏
     missing = [it["id"] for it in items if it.get("id") and it["id"] not in seen]
-    cat_to_group["其他"]["paper_ids"].extend(missing)
+    cat_to_group[FIXED_CATEGORIES[-1]]["paper_ids"].extend(missing)
 
-    # 为前四类写简单总结
-    for g in groups[:-1]:
+    # 写简单总结
+    for g in groups:
         g["summary_zh"] = f"{g['name_zh']}：共 {len(g['paper_ids'])} 篇。"
-    groups[-1]["summary_zh"] = "其他：难以归入前四类或信息不足的论文。"
 
     return {
-        "overview_zh": data.get("overview_zh") or "本次抓取论文已按固定五类完成归类。",
+        "overview_zh": data.get("overview_zh") or "本次抓取论文已按固定类别完成归类。",
         "groups": groups,
     }
 
