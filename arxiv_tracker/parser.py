@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 import feedparser
 from dateutil import parser as dtp
 from .extractors import extract_venue_info, extract_urls
+from .ids import canonical_arxiv_id
 
 def parse_feed(xml_text: str) -> List[Dict[str, Any]]:
     feed = feedparser.parse(xml_text)
@@ -31,8 +32,10 @@ def parse_feed(xml_text: str) -> List[Dict[str, Any]]:
         venue = extract_venue_info(f"{comments or ''} {journal_ref or ''}")
         url_info = extract_urls(f"{comments or ''}\n{getattr(e, 'summary', '')}")
 
+        raw_id = e.get("id")
         item = {
-            "id": e.get("id"),
+            "id": raw_id,
+            "id_canonical": canonical_arxiv_id(raw_id),
             "title": title,
             "authors": authors,
             "primary_category": primary_cat,
