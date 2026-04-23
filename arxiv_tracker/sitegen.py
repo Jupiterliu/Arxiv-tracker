@@ -83,6 +83,11 @@ def _strip_redundant_links(md: str) -> str:
         out.append(line)
     return "\n".join(out)
 
+def _slug(s: str) -> str:
+    t = re.sub(r"\s+", "-", (s or "").strip().lower())
+    t = re.sub(r"[^a-z0-9\-\u4e00-\u9fff]", "", t)
+    return t or "group"
+
 def _css(accent: str = "#2563eb") -> str:
     return f"""
 :root {{
@@ -114,6 +119,15 @@ summary{{cursor:pointer;color:var(--acc)}}
 .controls{{display:flex;gap:8px;align-items:center}}
 .btn{{border:1px solid var(--border);background:var(--card);padding:6px 10px;border-radius:10px;cursor:pointer;color:var(--text)}}
 .btn:hover{{border-color:var(--acc)}}
+.layout{{display:grid;grid-template-columns:1fr;gap:14px;margin-top:12px}}
+.sidebar{{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;align-self:start}}
+.sidebar-title{{font-weight:700;margin:0 0 8px 0}}
+.toc a{{display:block;color:var(--acc);text-decoration:none;padding:3px 0;font-size:14px}}
+.maincol{{min-width:0}}
+@media (min-width: 980px) {{
+  .layout{{grid-template-columns:260px minmax(0,1fr)}}
+  .sidebar{{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}}
+}}
 """
 
 def _join_links(it: Dict[str, Any]) -> str:
@@ -141,10 +155,6 @@ def _card(it: Dict[str, Any],
     zh_title = (trans_zh or {}).get("title_zh")
     zh_abs   = (trans_zh or {}).get("summary_zh")
 
-    # 新的双语总结（来自 summarizer）
-    digest_en = (sum_en or {}).get("digest_en") or (sum_zh or {}).get("digest_en") or ""
-    digest_zh = (sum_zh or {}).get("digest_zh") or (sum_en or {}).get("digest_zh") or ""
-
     parts = [f'<div class="card">', f'<div class="title">{_esc(t)}</div>']
 
     # 元信息分行
@@ -171,15 +181,6 @@ def _card(it: Dict[str, Any],
         if zh_abs:   parts.append(f'<div class="mono" style="margin-top:8px">{_esc(zh_abs)}</div>')
         parts.append('</details>')
 
-    # ✅ 只渲染双语总结（英文→中文），去掉 TL;DR & 方法卡
-    if digest_en or digest_zh:
-        parts.append('<details class="detail"><summary>Summary / 总结</summary>')
-        if digest_en:
-            parts.append(f'<div class="mono">{_esc(digest_en)}</div>')
-        if digest_zh:
-            parts.append(f'<div class="mono" style="margin-top:8px">{_esc(digest_zh)}</div>')
-        parts.append('</details>')
-
     parts.append('</div>')
     return "\n".join(parts)
 
@@ -188,7 +189,7 @@ def _write(path: str, text: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f: f.write(text)
 
-def _build_page(title: str, sub: str, cards_html: str, history_html: str,
+def _build_page(title: str, sub: str, toc_html: str, cards_html: str, history_html: str,
                 theme_mode: str, accent: str) -> str:
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     js = f"""
@@ -244,7 +245,13 @@ def _build_page(title: str, sub: str, cards_html: str, history_html: str,
     </div>
     <div class="hr"></div>
     <div>{_esc(sub)}</div>
-    <div class="row">{cards_html}</div>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-title">分类目录</div>
+        <div class="toc">{toc_html}</div>
+      </aside>
+      <div class="maincol row">{cards_html}</div>
+    </div>
     <details style="margin-top:16px" class="detail"><summary>History</summary>
       <div class="history-list">{history_html}</div>
     </details>
@@ -269,6 +276,7 @@ def generate_site(items: List[Dict[str,Any]],
                   summaries_zh: Dict[str,Dict[str,str]],
                   summaries_en: Dict[str,Dict[str,str]],
                   translations: Dict[str,Dict[str,str]],
+                  categorization: Dict[str, Any],
                   site_dir: str, site_title: str = "arXiv Results",
                   keep_runs: int = 60,
                   theme: str = "light",
@@ -278,21 +286,41 @@ def generate_site(items: List[Dict[str,Any]],
     os.makedirs(archive_dir, exist_ok=True)
     open(os.path.join(site_dir, ".nojekyll"), "w").close()
 
+    by_id = {it.get("id"): it for it in items if it.get("id")}
+    groups = (categorization or {}).get("groups") or []
+    overview = (categorization or {}).get("overview_zh") or ""
+
     cards = []
-    for it in items:
-        sid = it.get("id") or ""
-        cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
+    toc_links = []
+    if overview:
+        cards.append(f'<div class="card"><div class="title">分类概览</div><div class="mono">{_esc(overview)}</div></div>')
+
+    for i, g in enumerate(groups, 1):
+        gname = g.get("name_zh") or "未命名类别"
+        gsum = g.get("summary_zh") or ""
+        anchor = f"group-{i}-{_slug(gname)}"
+        toc_links.append(f'<a href="#{_esc(anchor)}">{i}. {_esc(gname)}</a>')
+        cards.append(f'<div id="{_esc(anchor)}" class="card"><div class="title">类别：{_esc(gname)}</div>'
+                     + (f'<div class="mono">{_esc(gsum)}</div>' if gsum else '')
+                     + '</div>')
+        for pid in g.get("paper_ids", []):
+            it = by_id.get(pid)
+            if not it:
+                continue
+            sid = it.get("id") or ""
+            cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
     cards_html = "\n".join(cards)
+    toc_html = "\n".join(toc_links) if toc_links else '<span class="meta-line">暂无分类目录</span>'
     hist_html = "\n".join(_history_list(archive_dir, keep_runs))
 
     acc = (accent or "#2563eb").strip()
 
-    arch_html = _build_page(site_title, f"Snapshot: {stamp}", cards_html, history_html=hist_html,
+    arch_html = _build_page(site_title, f"Snapshot: {stamp}", toc_html, cards_html, history_html=hist_html,
                             theme_mode=theme, accent=acc)
     arch_path = os.path.join(archive_dir, f"{stamp}.html")
     _write(arch_path, arch_html)
 
-    index_html = _build_page(site_title, "Latest digest", cards_html, history_html=hist_html,
+    index_html = _build_page(site_title, "Latest digest", toc_html, cards_html, history_html=hist_html,
                              theme_mode=theme, accent=acc)
     index_path = os.path.join(site_dir, "index.html")
     _write(index_path, index_html)
