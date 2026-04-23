@@ -62,6 +62,8 @@ summary{{cursor:pointer;color:var(--acc)}}
 .sidebar-title{{font-weight:700;margin:0 0 8px 0}}
 .toc a{{display:block;color:var(--acc);text-decoration:none;padding:3px 0;font-size:14px}}
 .maincol{{min-width:0}}
+.chips{{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}}
+.chip{{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;line-height:1.6;border:1px solid transparent}}
 @media (min-width: 980px) {{
   .layout{{grid-template-columns:260px minmax(0,1fr)}}
   .sidebar{{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}}
@@ -84,6 +86,24 @@ def _join_links(it: Dict[str, Any]) -> str:
     return " · ".join(parts)
 
 
+def _chip_color(i: int) -> str:
+    palette = [
+        "#fee2e2", "#ffedd5", "#fef9c3", "#dcfce7", "#dbeafe",
+        "#ede9fe", "#fce7f3", "#cffafe", "#e2e8f0", "#fae8ff",
+    ]
+    return palette[i % len(palette)]
+
+
+def _render_chips(values: List[str], color_map: Dict[str, str]) -> str:
+    if not values:
+        return ""
+    chips = []
+    for v in values:
+        bg = color_map.get(v, "#e2e8f0")
+        chips.append(f'<span class="chip" style="background:{bg}">{_esc(v)}</span>')
+    return '<div class="chips">' + "".join(chips) + "</div>"
+
+
 def _card(
     it: Dict[str, Any],
     trans_zh: Optional[Dict[str, str]],
@@ -102,6 +122,9 @@ def _card(
     zh_abs = (trans_zh or {}).get("summary_zh")
 
     parts = [f'<div class="card">', f'<div class="title">{_esc(t)}</div>']
+    kw_tags = it.get("matched_keywords") or []
+    if kw_tags:
+        parts.append(_render_chips(kw_tags, it.get("_keyword_color_map") or {}))
 
     parts.append(f'<div class="meta-line">Authors: {_esc(au)}</div>')
     if venue:
@@ -226,6 +249,7 @@ def generate_site(items: List[Dict[str, Any]],
                   summaries_en: Dict[str, Dict[str, str]],
                   translations: Dict[str, Dict[str, str]],
                   categorization: Dict[str, Any],
+                  configured_keywords: Optional[List[str]],
                   site_dir: str, site_title: str = "arXiv Results",
                   keep_runs: int = 60,
                   theme: str = "light",
@@ -238,6 +262,10 @@ def generate_site(items: List[Dict[str, Any]],
     by_id = {it.get("id"): it for it in items if it.get("id")}
     groups = (categorization or {}).get("groups") or []
     overview = (categorization or {}).get("overview_zh") or ""
+    all_keywords = list(configured_keywords or [])
+    kw_color_map = {kw: _chip_color(i) for i, kw in enumerate(all_keywords)}
+    for it in items:
+        it["_keyword_color_map"] = kw_color_map
 
     cards = []
     toc_links = []
@@ -247,12 +275,13 @@ def generate_site(items: List[Dict[str, Any]],
     for i, g in enumerate(groups, 1):
         gname = g.get("name_zh") or "未命名类别"
         gsum = g.get("summary_zh") or ""
+        paper_ids = g.get("paper_ids", []) or []
         anchor = f"group-{i}-{_slug(gname)}"
-        toc_links.append(f'<a href="#{_esc(anchor)}">{i}. {_esc(gname)}</a>')
+        toc_links.append(f'<a href="#{_esc(anchor)}">{i}. {_esc(gname)} ({len(paper_ids)})</a>')
         cards.append(f'<div id="{_esc(anchor)}" class="card"><div class="title">类别：{_esc(gname)}</div>'
                      + (f'<div class="mono">{_esc(gsum)}</div>' if gsum else '')
                      + '</div>')
-        for pid in g.get("paper_ids", []):
+        for pid in paper_ids:
             it = by_id.get(pid)
             if not it:
                 continue
@@ -260,7 +289,15 @@ def generate_site(items: List[Dict[str, Any]],
             cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
 
     cards_html = "\n".join(cards)
-    toc_html = "\n".join(toc_links) if toc_links else '<span class="meta-line">暂无分类目录</span>'
+    if toc_links:
+        group_toc = "\n".join(toc_links)
+    else:
+        group_toc = '<span class="meta-line">暂无分类目录</span>'
+
+    keyword_box = ""
+    if all_keywords:
+        keyword_box = '<div class="detail" style="margin-top:12px"><div class="sidebar-title">关键词</div>' + _render_chips(all_keywords, kw_color_map) + '</div>'
+    toc_html = group_toc + keyword_box
     hist_html = "\n".join(_history_list(archive_dir, keep_runs))
 
     acc = (accent or "#2563eb").strip()

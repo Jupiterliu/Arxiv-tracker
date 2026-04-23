@@ -16,7 +16,7 @@ def _fallback(items: List[Dict[str, Any]]) -> Dict[str, Any]:
             g["paper_ids"].append(it["id"])
     return {
         "overview_zh": "本次抓取论文按 arXiv 学科标签进行分组展示。",
-        "groups": list(groups.values()),
+        "groups": list(groups.values())[:10],
     }
 
 
@@ -62,5 +62,5 @@ def categorize_items(items: List[Dict[str, Any]], llm_cfg: Dict[str, Any]) -> Di
 
     return {
         "overview_zh": data.get("overview_zh") or "本次抓取论文已按主题分类展示。",
-        "groups": clean_groups,
+        "groups": clean_groups[:10],
     }

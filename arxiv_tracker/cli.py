@@ -35,6 +35,22 @@ def _split_keywords(values):
     return out
 
 
+def _match_keywords_for_item(item, keywords):
+    src = " ".join([
+        item.get("title") or "",
+        item.get("summary") or "",
+        item.get("comments") or "",
+    ]).lower()
+    out = []
+    for kw in keywords or []:
+        k = (kw or "").strip()
+        if not k:
+            continue
+        if k.lower() in src and k not in out:
+            out.append(k)
+    return out
+
+
 def _load_raw_cfg(maybe_path):
     import yaml
     path = maybe_path or "config.yaml"
@@ -270,6 +286,11 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
         else:
             click.echo(f"[Info] Fetched {len(items)} new item(s) after pagination/dedup.")
 
+        # 2.5) 为每篇论文附加命中的关键词标签（用于网页展示）
+        configured_keywords = list(cfg.keywords or [])
+        for it in items:
+            it["matched_keywords"] = _match_keywords_for_item(it, configured_keywords)
+
         # 先从已有文本/HTML提取；若仍没有再扫 PDF 头部兜底
         scrape_cfg = (raw_cfg.get("scrape") or {})
         scrape_html = bool(scrape_cfg.get("html", True))
@@ -360,6 +381,7 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                     summaries_en=summaries_en or {},
                     translations=translations or {},
                     categorization=categorization or {},
+                    configured_keywords=configured_keywords,
                     site_dir=sd, site_title=title, keep_runs=keep,
                     theme=theme, accent=accent
                 )
