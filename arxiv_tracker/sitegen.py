@@ -272,19 +272,24 @@ def generate_site(items: List[Dict[str, Any]],
     if overview:
         cards.append(f'<div class="card"><div class="title">分类概览</div><div class="mono">{_esc(overview)}</div></div>')
 
-    for i, g in enumerate(groups, 1):
-        gname = g.get("name_zh") or "未命名类别"
-        gsum = g.get("summary_zh") or ""
-        paper_ids = g.get("paper_ids", []) or []
-        anchor = f"group-{i}-{_slug(gname)}"
-        toc_links.append(f'<a href="#{_esc(anchor)}">{i}. {_esc(gname)} ({len(paper_ids)})</a>')
-        cards.append(f'<div id="{_esc(anchor)}" class="card"><div class="title">类别：{_esc(gname)}</div>'
-                     + (f'<div class="mono">{_esc(gsum)}</div>' if gsum else '')
-                     + '</div>')
-        for pid in paper_ids:
-            it = by_id.get(pid)
-            if not it:
-                continue
+    if groups:
+        for i, g in enumerate(groups, 1):
+            gname = g.get("name_zh") or "未命名类别"
+            gsum = g.get("summary_zh") or ""
+            paper_ids = g.get("paper_ids", []) or []
+            anchor = f"group-{i}-{_slug(gname)}"
+            toc_links.append(f'<a href="#{_esc(anchor)}">{i}. {_esc(gname)} ({len(paper_ids)})</a>')
+            cards.append(f'<div id="{_esc(anchor)}" class="card"><div class="title">类别：{_esc(gname)}</div>'
+                         + (f'<div class="mono">{_esc(gsum)}</div>' if gsum else '')
+                         + '</div>')
+            for pid in paper_ids:
+                it = by_id.get(pid)
+                if not it:
+                    continue
+                sid = it.get("id") or ""
+                cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
+    else:
+        for it in items:
             sid = it.get("id") or ""
             cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
 
