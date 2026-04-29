@@ -145,9 +145,9 @@ def call_llm_keyword_summary(
     """对某个关键词下的论文做聚合总结（中文）。"""
     sys_prompt = system_prompt_zh or "你是资深论文分析助手，请对同一主题论文做聚合总结。"
     payload = []
-    max_papers = 2
-    max_abs_chars = 700
-    max_title_chars = 220
+    max_papers = 20
+    max_abs_chars = 1500
+    max_title_chars = 150
     for p in papers[:max_papers]:
         absu = (p.get("summary") or "").strip()
         if len(absu) > max_abs_chars:

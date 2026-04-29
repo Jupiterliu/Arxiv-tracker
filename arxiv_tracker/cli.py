@@ -58,7 +58,9 @@ def _build_keyword_summary(items, llm_cfg):
         raise RuntimeError("未找到 LLM API Key，无法生成关键词聚合总结。")
 
     out = {}
-    for kw, kw_items in (items or {}).items():
+    wait_seconds = 60
+    pairs = list((items or {}).items())
+    for idx, (kw, kw_items) in enumerate(pairs):
         if not kw_items:
             continue
         out[kw] = call_llm_keyword_summary(
@@ -69,6 +71,9 @@ def _build_keyword_summary(items, llm_cfg):
             api_key=api_key,
             system_prompt_zh=llm_cfg.get("system_prompt_zh", ""),
         )
+        if idx < len(pairs) - 1:
+            click.echo(f"[KeywordSummary] '{kw}' 总结完成，等待 {wait_seconds}s 后处理下一个关键词...")
+            time.sleep(wait_seconds)
     return out
 
 
