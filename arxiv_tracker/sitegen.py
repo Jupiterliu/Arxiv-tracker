@@ -191,6 +191,20 @@ def _build_page(title: str, sub: str, toc_html: str, cards_html: str, history_ht
   window.__expandAll = function(open) {{
     document.querySelectorAll('details').forEach(d => d.open = !!open);
   }}
+  window.__filterByKeyword = function(keyword) {{
+    const cards = document.querySelectorAll('.paper-card');
+    const summaryCards = document.querySelectorAll('.kw-summary-card');
+    const all = keyword === 'ALL';
+    cards.forEach(card => {{
+      const kws = (card.getAttribute('data-keywords') || '').split('|').filter(Boolean);
+      card.style.display = (all || kws.includes(keyword)) ? '' : 'none';
+    }});
+    summaryCards.forEach(card => {{
+      const k = card.getAttribute('data-keyword') || '';
+      card.style.display = (!all && k === keyword) ? '' : 'none';
+    }});
+    document.getElementById('kw-current').textContent = keyword;
+  }}
 }})();
 </script>
 """
@@ -214,7 +228,7 @@ def _build_page(title: str, sub: str, toc_html: str, cards_html: str, history_ht
       </div>
     </div>
     <div class="hr"></div>
-    <div>{_esc(sub)}</div>
+    <div>{_esc(sub)} · 当前关键词：<b id="kw-current">ALL</b></div>
     <div class="layout">
       <aside class="sidebar">
         <div class="sidebar-title">分类目录</div>
@@ -250,6 +264,7 @@ def generate_site(items: List[Dict[str, Any]],
                   translations: Dict[str, Dict[str, str]],
                   categorization: Dict[str, Any],
                   configured_keywords: Optional[List[str]],
+                  keyword_summaries: Optional[Dict[str, str]],
                   site_dir: str, site_title: str = "arXiv Results",
                   keep_runs: int = 60,
                   theme: str = "light",
@@ -264,6 +279,11 @@ def generate_site(items: List[Dict[str, Any]],
     overview = (categorization or {}).get("overview_zh") or ""
     all_keywords = list(configured_keywords or [])
     kw_color_map = {kw: _chip_color(i) for i, kw in enumerate(all_keywords)}
+    kw_counts = {kw: 0 for kw in all_keywords}
+    for it in items:
+        for kw in it.get("matched_keywords") or []:
+            if kw in kw_counts:
+                kw_counts[kw] += 1
     for it in items:
         it["_keyword_color_map"] = kw_color_map
 
@@ -287,11 +307,17 @@ def generate_site(items: List[Dict[str, Any]],
                 if not it:
                     continue
                 sid = it.get("id") or ""
-                cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
+                cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)).replace(
+                    '<div class="card">', f'<div class="card paper-card" data-keywords="{_esc("|".join(it.get("matched_keywords") or []))}">', 1))
     else:
         for it in items:
             sid = it.get("id") or ""
-            cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)))
+            cards.append(_card(it, translations.get(sid), summaries_zh.get(sid), summaries_en.get(sid)).replace(
+                '<div class="card">', f'<div class="card paper-card" data-keywords="{_esc("|".join(it.get("matched_keywords") or []))}">', 1))
+
+    for kw, summary in (keyword_summaries or {}).items():
+        cards.insert(0, f'<div class="card kw-summary-card" data-keyword="{_esc(kw)}" style="display:none">'
+                        f'<div class="title">关键词总结：{_esc(kw)}</div><div class="mono">{_esc(summary)}</div></div>')
 
     cards_html = "\n".join(cards)
     if toc_links:
@@ -301,7 +327,10 @@ def generate_site(items: List[Dict[str, Any]],
 
     keyword_box = ""
     if all_keywords:
-        keyword_box = '<div class="detail" style="margin-top:12px"><div class="sidebar-title">关键词</div>' + _render_chips(all_keywords, kw_color_map) + '</div>'
+        links = [f'<a href="javascript:void(0)" onclick="__filterByKeyword(\'ALL\')">ALL ({len(items)})</a>']
+        for kw in all_keywords:
+            links.append(f'<a href="javascript:void(0)" onclick="__filterByKeyword(\'{_esc(kw)}\')">{_esc(kw)} ({kw_counts.get(kw, 0)})</a>')
+        keyword_box = '<div class="detail" style="margin-top:12px"><div class="sidebar-title">关键词筛选</div><div class="toc">' + "".join(links) + '</div></div>'
     toc_html = group_toc + keyword_box
     hist_html = "\n".join(_history_list(archive_dir, keep_runs))
 

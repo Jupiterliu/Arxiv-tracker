@@ -132,6 +132,61 @@ def call_llm_bilingual_summary(
         "digest_zh": (data.get("digest_zh") or "").strip(),
     }
 
+
+def call_llm_keyword_summary(
+    *,
+    keyword: str,
+    papers: List[Dict[str, Any]],
+    base_url: str,
+    model: str,
+    api_key: str,
+    system_prompt_zh: str = "",
+) -> str:
+    """对某个关键词下的论文做聚合总结（中文）。"""
+    sys_prompt = system_prompt_zh or "你是资深论文分析助手，请对同一主题论文做聚合总结。"
+    payload = []
+    max_papers = 12
+    max_abs_chars = 700
+    max_title_chars = 220
+    for p in papers[:max_papers]:
+        absu = (p.get("summary") or "").strip()
+        if len(absu) > max_abs_chars:
+            absu = absu[:max_abs_chars] + " ..."
+        title = (p.get("title") or "").strip()
+        if len(title) > max_title_chars:
+            title = title[:max_title_chars] + " ..."
+        payload.append({
+            "title": title,
+            "summary": absu,
+            "authors": p.get("authors") or [],
+            "published": p.get("published") or "",
+            "updated": p.get("updated") or "",
+        })
+
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content":
+            "请基于以下同一关键词下的论文列表，输出中文总结，包含：\n"
+            "1) 该关键词下研究主线与热点；\n"
+            "2) 代表性方法范式；\n"
+            "3) 常见评测方式/结论趋势；\n"
+            "4) 潜在空白与后续研究方向。\n"
+            "要求：客观简洁，控制在 180-260 字，返回纯文本，不要 Markdown 标题或列表。\n\n"
+            f"关键词: {keyword}\n"
+            f"输入论文数: {len(papers)}，已抽样: {len(payload)}\n"
+            f"论文数据(JSON): {json.dumps(payload, ensure_ascii=False)}"
+         }
+    ]
+    text = _chat_completions_request(
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        messages=messages,
+        temperature=0.2,
+        max_tokens=520,
+    )
+    return (text or "").strip()
+
 # ========== 两阶段摘要（保留你原有接口与行为） ==========
 
 def build_llm_prompt(item: Dict[str, Any], lang: str = "zh", scope: str = "both"):
