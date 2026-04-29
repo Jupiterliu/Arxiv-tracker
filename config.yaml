@@ -38,6 +38,10 @@ summary:
   # scope: tldr / full / both
   scope: "both"
 
+# —— 关键词下论文聚合总结（LLM） ——
+keyword_summary:
+  enabled: false
+
 # —— 邮件发送（QQ 邮箱） ——
 email:
   enabled: true
