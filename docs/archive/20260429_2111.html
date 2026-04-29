@@ -96,64 +96,17 @@ summary{cursor:pointer;color:var(--acc)}
   <button class="btn" onclick="__expandAll(false)">Collapse All</button>
 </div>
 
-        <span class="badge">2026-04-29 21:17</span>
+        <span class="badge">2026-04-29 21:11</span>
       </div>
     </div>
     <div class="hr"></div>
-    <div>Latest digest · 当前关键词：<b id="kw-current">ALL</b></div>
+    <div>Snapshot: 20260429_2111 · 当前关键词：<b id="kw-current">ALL</b></div>
     <div class="layout">
       <aside class="sidebar">
         <div class="sidebar-title">分类目录</div>
         <div class="toc"><span class="meta-line">暂无分类目录</span><div class="detail" style="margin-top:12px"><div class="sidebar-title">关键词筛选</div><div class="toc"><a href="javascript:void(0)" onclick="__filterByKeyword('ALL')">ALL (150)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Malicious')">Malicious (14)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Adversarial')">Adversarial (74)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Physical Attack')">Physical Attack (0)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Latency Attack')">Latency Attack (0)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Backdoor')">Backdoor (9)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Watermark')">Watermark (9)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Prompt Injection')">Prompt Injection (12)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Jailbreak')">Jailbreak (17)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Poisoning')">Poisoning (12)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Hijacking')">Hijacking (4)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Membership Inference')">Membership Inference (2)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Model Extraction')">Model Extraction (1)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Model Stealing')">Model Stealing (1)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Reasoning Manipulation')">Reasoning Manipulation (0)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Weight-based Attack')">Weight-based Attack (0)</a><a href="javascript:void(0)" onclick="__filterByKeyword('Tool Injection')">Tool Injection (0)</a><a href="javascript:void(0)" onclick="__filterByKeyword('VLA')">VLA (15)</a><a href="javascript:void(0)" onclick="__filterByKeyword('World Model')">World Model (10)</a></div></div></div>
       </aside>
-      <div class="maincol row"><div class="card kw-summary-card" data-keyword="Model Extraction" style="display:none"><div class="title">关键词总结：Model Extraction</div><div class="mono">在模型提取（Model Extraction）领域，研究的主线主要集中在保护推荐系统的知识产权，尤其是在开源推荐算法日益普及和模型提取攻击威胁上升的背景下。当前的热点是开发有效的水印技术，以防止模型被非法复制。代表性的方法范式如GREW（Green-Red Watermarking），该框架通过利用秘密密钥来增强水印的隐蔽性，克服了传统方法依赖于记忆预定义交互模式的局限性，这些传统方法往往需要大量合成数据并易受移除攻击。常见的评测方式包括对水印的鲁棒性和隐蔽性的评估，研究结果表明，GREW在防护效果上优于现有方法。尽管如此，仍存在潜在的研究空白，如如何进一步提高水印的安全性和降低对数据的依赖，未来的研究方向可以探索更为智能化的防护机制和适应性强的水印策略。</div></div>
-<div class="card kw-summary-card" data-keyword="Membership Inference" style="display:none"><div class="title">关键词总结：Membership Inference</div><div class="mono">在“Membership Inference”这一研究领域，当前的主线集中在如何评估和增强大型语言模型（LLMs）的隐私保护能力。研究热点包括利用成员推断攻击（MIA）来审计模型的隐私性和数据泄露风险。代表性的方法范式有LLM-CEG框架，该框架通过结合MIA成功率和模型困惑度来优化差分隐私参数，从而实现隐私与效用的平衡。此外，N-Gram覆盖攻击则通过仅依赖文本输出，成功对黑箱模型进行成员推断，拓宽了攻击的适用范围。
-
-常见的评测方式包括对比不同隐私保护机制下MIA攻击者的成功率，结果表明，差分隐私技术能够显著降低攻击者的优势。尽管已有研究取得了一定成果，但仍存在对API访问模型的攻击方法不足的空白，后续研究可进一步探索更高效的黑箱攻击策略，以及在不同应用场景下的隐私保护机制的有效性。</div></div>
-<div class="card kw-summary-card" data-keyword="Model Stealing" style="display:none"><div class="title">关键词总结：Model Stealing</div><div class="mono">在“模型盗窃”这一研究领域，当前的主线集中在保护大型语言模型（LLMs）在边缘设备部署时的安全性。随着LLMs在多种任务中展现出强大的泛化能力，其在边缘设备上的应用日益普及，但随之而来的安全威胁也日益严重，攻击者能够提取模型权重和架构，导致未经授权的复制和滥用。代表性的研究方法如CoreGuard，旨在通过有效的防护措施来抵御模型盗窃，同时考虑到计算和通信开销的问题。常见的评测方式包括对防护措施的有效性和效率进行综合评估，研究结果表明，现有防护措施在性能上往往难以满足实际应用需求。未来的研究方向可能包括开发更高效的防护机制，探索新型的攻击方式，以及在保持模型性能的同时增强安全性，以填补当前研究中的空白。</div></div>
-<div class="card kw-summary-card" data-keyword="Backdoor" style="display:none"><div class="title">关键词总结：Backdoor</div><div class="mono">在“Backdoor”这一关键词下，研究主要集中在如何在机器学习和计算机视觉系统中实现和防御后门攻击。当前的热点包括针对对象检测系统的后门攻击，尤其是利用触发器的有效性和隐蔽性。代表性的方法范式如DETOUR，提出了一种实用的后门攻击策略，强调了触发器在不同位置和尺寸下的适应性，揭示了触发器辐射效应（TRE）的重要性。
-
-常见的评测方式包括对攻击效果的量化评估和对监测模型检测能力的验证，研究结果表明，现有的后门攻击方法在实际应用中存在局限性，尤其是在复杂环境下的有效性和隐蔽性。尽管已有研究取得了一定进展，但仍存在潜在空白，如如何提高后门攻击的实用性和隐蔽性，以及如何设计更为鲁棒的防御机制。后续研究方向可聚焦于开发更为复杂的攻击模型和防御策略，以应对不断演变的安全威胁。</div></div>
-<div class="card kw-summary-card" data-keyword="Hijacking" style="display:none"><div class="title">关键词总结：Hijacking</div><div class="mono">在“Hijacking”这一关键词下，研究主要集中在大型语言模型（LLMs）与外部工具的安全性问题，尤其是针对高权限AI编码编辑器和模型上下文协议（MCP）的攻击。当前的热点包括提示注入攻击和MCP生态系统中的安全风险。代表性的方法范式包括对高权限AI编码编辑器的实证分析和对MCP的跨实体安全研究，这些研究揭示了攻击者如何利用系统的弱点进行远程控制和操作。常见的评测方式包括对攻击面和漏洞的分析，研究结果表明，现有系统在安全性上存在显著缺陷，攻击者可以通过弱验证和元数据操控影响模型的推理过程。潜在的研究空白在于如何加强对高权限系统的安全防护，以及如何设计更为健全的MCP标准，以防止未来的安全漏洞。后续研究方向可集中在开发更有效的防御机制和完善的安全评估框架。</div></div>
-<div class="card kw-summary-card" data-keyword="World Model" style="display:none"><div class="title">关键词总结：World Model</div><div class="mono">在“世界模型”（World Model）领域，研究的主线集中在如何通过模拟环境来提升自主系统的决策能力，尤其是在复杂和动态的任务中。当前的热点包括利用多样化的数据集来增强模型的鲁棒性和适应性。代表性的方法范式如ReSim和RISE，前者通过结合真实和模拟数据构建可控的世界模型，后者则采用组合世界模型来实现机器人策略的自我改进。
-
-常见的评测方式包括在真实环境中的策略评估和模拟环境中的性能测试，研究结果普遍表明，结合多样化数据源的模型在处理非专家行为和复杂场景时表现更佳。然而，现有研究仍存在一定的局限性，如对极端情况的处理不足和模型的可解释性问题。
-
-未来的研究方向可以聚焦于提升模型在未知环境中的适应能力、增强模型的可解释性，以及探索更高效的训练方法，以应对现实世界中的复杂性和不确定性。</div></div>
-<div class="card kw-summary-card" data-keyword="Prompt Injection" style="display:none"><div class="title">关键词总结：Prompt Injection</div><div class="mono">在“Prompt Injection”这一研究领域，当前的主线集中在提高系统对恶意输入的防御能力，尤其是在复杂的网络环境中。研究热点主要包括针对网页内容的提示注入攻击及其检测方法。代表性的方法范式如SnapGuard，采用轻量级的检测机制，专注于截图基础的网页代理，旨在克服传统文本中心防御的局限性。此外，针对大型语言模型（LLMs）在公共机构中的应用，提出的TEE架构则强调在不暴露模型的情况下实现审计和透明性。
-
-常见的评测方式包括对模型在不同攻击场景下的鲁棒性测试，以及对检测系统的准确性和效率评估。趋势显示，随着攻击手段的不断演化，现有防御机制的有效性面临挑战，亟需更为高效的解决方案。
-
-潜在的研究空白在于如何在保持模型隐私的同时，增强其对复杂攻击的适应能力。后续研究方向可考虑结合多模态学习与轻量级模型设计，以实现更高效的防御机制，同时探索在不同应用场景下的适用性。</div></div>
-<div class="card kw-summary-card" data-keyword="Watermark" style="display:none"><div class="title">关键词总结：Watermark</div><div class="mono">在水印技术的研究中，当前的主线集中在水印的生成、检测与去除方法的有效性与安全性。研究热点包括如何提高水印的鲁棒性以及去除水印后的可检测性。代表性方法范式包括基于统计特征的水印检测和去除技术，尤其是通过分析输出的排名频率分布来识别水印的存在与去除效果。
-
-常见的评测方式主要包括攻击成功率和感知质量，但最近的研究指出，仅依赖这两个指标并不足以全面评估去除方法的有效性。新提出的水印去除检测（WRD）指标显示，尽管去除方法在视觉上未造成明显失真，但仍可能留下统计特征的痕迹，这为后续的检测提供了依据。
-
-潜在的研究空白在于如何设计更为全面的评估标准，以涵盖水印去除后的所有可能检测迹象。此外，未来的研究方向可以集中在开发更先进的水印生成与去除技术，以提高其安全性与隐蔽性，同时探索在不同应用场景下的适用性。</div></div>
-<div class="card kw-summary-card" data-keyword="Jailbreak" style="display:none"><div class="title">关键词总结：Jailbreak</div><div class="mono">在“Jailbreak”这一关键词下的研究主要集中在大型语言模型（LLMs）和视觉语言模型（VLMs）在多语言环境及信息传播中的安全性与脆弱性。当前热点包括跨语言的攻击方式及其对模型安全性的影响，以及图像在信息传播中的作用。代表性的方法范式包括通过语义相似性进行跨语言监测，以及基于图像的提示策略来探讨模型对争议内容的响应。这些研究通常采用系统评估和人类实验的方式进行评测，结果显示多语言环境下的攻击成功率显著提高，且图像能够增强信息的可信度和分享率。尽管已有研究揭示了这些安全漏洞，但仍存在针对多语言模型的防护机制不足的空白，未来的研究方向可集中在开发更为有效的语言无关防护措施及深入探讨图像对信息传播的影响。</div></div>
-<div class="card kw-summary-card" data-keyword="Malicious" style="display:none"><div class="title">关键词总结：Malicious</div><div class="mono">在“恶意”这一关键词下的研究主线主要集中在针对大型语言模型（LLMs）和网页代理的安全性问题，尤其是如何防范跨语言的恶意攻击和提示注入攻击。当前的热点包括多语言环境下的安全机制和针对复杂网页的轻量级检测方法。
-
-代表性的方法范式包括通过语言无关的语义相似性来检测恶意提示，避免了对模型的重训练和语言特定的适配。此外，针对截图基础的网页代理，研究者们提出了轻量级的提示注入检测方案，以应对现代网页的复杂性。
-
-常见的评测方式包括系统性评估不同方法在多语言和多模态环境下的有效性，结果趋势显示，现有的防御机制在多语言和复杂网页场景中仍存在显著的安全漏洞。
-
-潜在的研究空白在于如何进一步提高跨语言攻击的检测能力，以及在不增加计算负担的情况下，提升对复杂网页内容的理解和防护能力。后续研究方向可聚焦于开发更高效的检测算法和跨语言的安全防护框架。</div></div>
-<div class="card kw-summary-card" data-keyword="Poisoning" style="display:none"><div class="title">关键词总结：Poisoning</div><div class="mono">在“Poisoning”这一关键词下的研究主线主要集中在对抗性攻击对机器学习模型的影响，尤其是在大规模预训练模型和边缘设备应用中的鲁棒性问题。当前的热点包括如何提高模型在面对数据中毒攻击时的抵抗力，以及在特定应用场景（如SAR图像分类和大语言模型）中实现有效的分类和推理。
-
-代表性的方法范式包括使用张量网络来增强模型的鲁棒性，以及隐蔽预训练播种（SPS）技术，通过在训练数据中悄然植入中毒内容来进行攻击。这些方法强调了在模型设计和训练过程中的安全性考虑。
-
-常见的评测方式包括对模型在不同攻击场景下的性能评估，结果趋势表明，传统神经网络在面对数据中毒时的脆弱性明显，而新兴方法如张量网络则显示出更强的鲁棒性。
-
-潜在的研究空白在于如何进一步提升模型的可解释性和检测能力，以识别和防御隐蔽的中毒攻击。后续研究方向可以探索更复杂的攻击模型及其防御机制，尤其是在动态和实时应用环境中的适应性。</div></div>
-<div class="card kw-summary-card" data-keyword="VLA" style="display:none"><div class="title">关键词总结：VLA</div><div class="mono">在VLA（视觉-语言-行动）领域，研究主要集中在如何有效地结合视觉信息和语言指令以生成合适的行动。当前的热点包括数据集的语言多样性和生成策略的效率。代表性的方法如CF-VLA，通过粗到细的两阶段生成策略，优化了行动生成过程，解决了传统方法在实时约束下的效率与质量权衡问题。
-
-常见的评测方式包括对数据集的语言特征进行系统审计，分析指令的词汇多样性、重复性、语义相似性和句法复杂性等维度。研究表明，许多现有数据集存在高度重复和结构变化有限的问题，影响了模型的泛化能力。
-
-潜在的研究空白在于如何提升数据集的语言多样性，以增强模型的适应性和表现。此外，后续研究方向可聚焦于改进生成模型的实时性能和探索更丰富的指令表达方式，以推动VLA技术的实际应用。</div></div>
-<div class="card kw-summary-card" data-keyword="Adversarial" style="display:none"><div class="title">关键词总结：Adversarial</div><div class="mono">在“对抗性”这一关键词下的研究主线主要集中在提升模型的鲁棒性与安全性，尤其是在生成模型和知识蒸馏等领域。当前热点包括机器生成文本的检测和黑箱少样本知识蒸馏。代表性方法如Luminol-AIDetect，通过随机文本打乱来揭示生成文本的结构脆弱性，从而实现模型无关的检测；而在知识蒸馏方面，研究者们提出了新的训练方案，以提高合成图像的多样性，促进学生模型的学习。
-
-常见的评测方式包括对生成文本的困惑度分析和对学生模型性能的比较，趋势显示出对抗性方法在提升模型性能和多样性方面的有效性。然而，现有研究仍存在一些空白，如对抗性方法在不同领域的适用性和泛化能力，以及如何在黑箱设置下更有效地进行知识蒸馏。未来的研究方向可聚焦于探索更高效的对抗性训练策略和跨领域的应用，以进一步提升模型的鲁棒性与适应性。</div></div>
-<div class="card paper-card" data-keywords="Adversarial">
+      <div class="maincol row"><div class="card paper-card" data-keywords="Adversarial">
 <div class="title">Luminol-AIDetect: Fast Zero-shot Machine-Generated Text Detection based on Perplexity under Text Shuffling</div>
 <div class="chips"><span class="chip" style="background:#ffedd5">Adversarial</span></div>
 <div class="meta-line">Authors: Lucio La Cava, Andrea Tagarelli</div>
@@ -2244,8 +2197,7 @@ summary{cursor:pointer;color:var(--acc)}
 </div></div>
     </div>
     <details style="margin-top:16px" class="detail"><summary>History</summary>
-      <div class="history-list"><a href="archive/20260429_2111.html">20260429_2111</a>
-<a href="archive/20260429_2056.html">20260429_2056</a>
+      <div class="history-list"><a href="archive/20260429_2056.html">20260429_2056</a>
 <a href="archive/20260428_2026.html">20260428_2026</a>
 <a href="archive/20260424_0416.html">20260424_0416</a>
 <a href="archive/20260423_1818.html">20260423_1818</a>
