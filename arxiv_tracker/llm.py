@@ -145,10 +145,19 @@ def call_llm_keyword_summary(
     """对某个关键词下的论文做聚合总结（中文）。"""
     sys_prompt = system_prompt_zh or "你是资深论文分析助手，请对同一主题论文做聚合总结。"
     payload = []
-    for p in papers[:30]:
+    max_papers = 25
+    max_abs_chars = 700
+    max_title_chars = 220
+    for p in papers[:max_papers]:
+        absu = (p.get("summary") or "").strip()
+        if len(absu) > max_abs_chars:
+            absu = absu[:max_abs_chars] + " ..."
+        title = (p.get("title") or "").strip()
+        if len(title) > max_title_chars:
+            title = title[:max_title_chars] + " ..."
         payload.append({
-            "title": p.get("title") or "",
-            "summary": p.get("summary") or "",
+            "title": title,
+            "summary": absu,
             "authors": p.get("authors") or [],
             "published": p.get("published") or "",
             "updated": p.get("updated") or "",
@@ -164,6 +173,7 @@ def call_llm_keyword_summary(
             "4) 潜在空白与后续研究方向。\n"
             "要求：客观简洁，控制在 180-260 字，返回纯文本，不要 Markdown 标题或列表。\n\n"
             f"关键词: {keyword}\n"
+            f"输入论文数: {len(papers)}，已抽样: {len(payload)}\n"
             f"论文数据(JSON): {json.dumps(payload, ensure_ascii=False)}"
          }
     ]

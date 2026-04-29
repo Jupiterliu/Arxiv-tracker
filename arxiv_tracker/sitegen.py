@@ -279,6 +279,11 @@ def generate_site(items: List[Dict[str, Any]],
     overview = (categorization or {}).get("overview_zh") or ""
     all_keywords = list(configured_keywords or [])
     kw_color_map = {kw: _chip_color(i) for i, kw in enumerate(all_keywords)}
+    kw_counts = {kw: 0 for kw in all_keywords}
+    for it in items:
+        for kw in it.get("matched_keywords") or []:
+            if kw in kw_counts:
+                kw_counts[kw] += 1
     for it in items:
         it["_keyword_color_map"] = kw_color_map
 
@@ -322,9 +327,9 @@ def generate_site(items: List[Dict[str, Any]],
 
     keyword_box = ""
     if all_keywords:
-        links = ['<a href="javascript:void(0)" onclick="__filterByKeyword(\'ALL\')">ALL</a>']
+        links = [f'<a href="javascript:void(0)" onclick="__filterByKeyword(\'ALL\')">ALL ({len(items)})</a>']
         for kw in all_keywords:
-            links.append(f'<a href="javascript:void(0)" onclick="__filterByKeyword(\'{_esc(kw)}\')">{_esc(kw)}</a>')
+            links.append(f'<a href="javascript:void(0)" onclick="__filterByKeyword(\'{_esc(kw)}\')">{_esc(kw)} ({kw_counts.get(kw, 0)})</a>')
         keyword_box = '<div class="detail" style="margin-top:12px"><div class="sidebar-title">关键词筛选</div><div class="toc">' + "".join(links) + '</div></div>'
     toc_html = group_toc + keyword_box
     hist_html = "\n".join(_history_list(archive_dir, keep_runs))

@@ -365,7 +365,11 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                 try:
                     keyword_summaries = _build_keyword_summary(kw_groups, llm_cfg)
                 except Exception as e:
-                    click.secho(f"[KeywordSummary] 生成失败: {e}", fg="yellow")
+                    click.secho(
+                        "[KeywordSummary] 生成失败: {}。常见原因：模型不支持当前参数，或输入上下文过长。"
+                        .format(e),
+                        fg="yellow"
+                    )
 
         # 5) 终端预览
         if not items:
