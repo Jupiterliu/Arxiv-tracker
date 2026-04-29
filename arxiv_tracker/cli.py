@@ -50,6 +50,28 @@ def _match_keywords_for_item(item, keywords):
     return out
 
 
+def _build_keyword_summary(items, llm_cfg):
+    from .llm import call_llm_keyword_summary
+    api_key = (llm_cfg.get("api_key") or
+               os.getenv(llm_cfg.get("api_key_env") or "OPENAI_API_KEY", ""))
+    if not api_key:
+        raise RuntimeError("未找到 LLM API Key，无法生成关键词聚合总结。")
+
+    out = {}
+    for kw, kw_items in (items or {}).items():
+        if not kw_items:
+            continue
+        out[kw] = call_llm_keyword_summary(
+            keyword=kw,
+            papers=kw_items,
+            base_url=llm_cfg.get("base_url", ""),
+            model=llm_cfg.get("model", ""),
+            api_key=api_key,
+            system_prompt_zh=llm_cfg.get("system_prompt_zh", ""),
+        )
+    return out
+
+
 def _load_raw_cfg(maybe_path):
     import yaml
     path = maybe_path or "config.yaml"
@@ -332,6 +354,18 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
 
         # 4.5) 不做大分类，不做大模型类别总结，直接展示论文
         categorization = {"overview_zh": "", "groups": []}
+        keyword_summaries = {}
+        keyword_summary_cfg = (raw_cfg.get("keyword_summary") or {})
+        if bool(keyword_summary_cfg.get("enabled", False)):
+            kw_groups = {}
+            for it in items:
+                for kw in it.get("matched_keywords") or []:
+                    kw_groups.setdefault(kw, []).append(it)
+            if kw_groups:
+                try:
+                    keyword_summaries = _build_keyword_summary(kw_groups, llm_cfg)
+                except Exception as e:
+                    click.secho(f"[KeywordSummary] 生成失败: {e}", fg="yellow")
 
         # 5) 终端预览
         if not items:
@@ -381,6 +415,7 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
                     translations=translations or {},
                     categorization=categorization or {},
                     configured_keywords=configured_keywords,
+                    keyword_summaries=keyword_summaries,
                     site_dir=sd, site_title=title, keep_runs=keep,
                     theme=theme, accent=accent
                 )
