@@ -253,19 +253,70 @@ def run(config_path, categories, keywords, exclude_keywords, logic, max_results,
         cutoff = datetime.now(timezone.utc) - timedelta(days=since_days) if since_days > 0 else None
         want_new = int(cfg.max_results or 50)
 
-        # 分页参数（可按需改成配置）
-        page_size = min(200, max(25, want_new))  # 25~200 较稳
-        max_pages = 20
+        # 分页参数：复杂 OR 查询在 arXiv API 上容易慢查询，默认用较小页并允许配置覆盖。
+        arxiv_cfg = (raw_cfg.get("arxiv") or {})
+        page_size = int(arxiv_cfg.get("page_size", min(50, max(25, want_new))) or 50)
+        page_size = max(1, min(200, page_size))
+        max_pages = int(arxiv_cfg.get("max_pages", 20) or 20)
         start = 0
         collected, reached_cutoff = [], False
         collected_ids = set()
 
-        for _page in range(max_pages):
-            xml = fetch_arxiv_feed(
-                q, start=start, max_results=page_size,
-                sort_by=cfg.sort_by, sort_order=cfg.sort_order
+        def _fetch_page_items(search_query, page_start, page_max_results, *, timeout=None, max_attempts=None):
+            xml_text = fetch_arxiv_feed(
+                search_query, start=page_start, max_results=page_max_results,
+                sort_by=cfg.sort_by, sort_order=cfg.sort_order,
+                timeout=timeout, max_attempts=max_attempts,
             )
-            page_items = parse_feed(xml) or []
+            return parse_feed(xml_text) or []
+
+        def _fetch_page_items_with_split_fallback(page_start, page_max_results):
+            """
+            先请求完整查询；若 arXiv 对复杂 OR 查询读超时/网关抖动，则按关键词拆成
+            多个小查询并在本地按 arXiv ID 合并，避免一次慢查询导致整个自动任务失败。
+            """
+            try:
+                full_timeout = float(arxiv_cfg.get("full_query_timeout", 20) or 20)
+                full_attempts = int(arxiv_cfg.get("full_query_attempts", 1) or 1)
+                return _fetch_page_items(q, page_start, page_max_results,
+                                         timeout=full_timeout, max_attempts=full_attempts)
+            except Exception as exc:
+                split_enabled = bool(arxiv_cfg.get("split_keywords_on_failure", True))
+                can_split = bool(cfg.categories and cfg.keywords and (cfg.logic or "AND").upper() == "AND")
+                if not (split_enabled and can_split):
+                    raise
+                click.secho(
+                    f"[arXiv] 完整查询失败，改按关键词拆分重试：{exc}",
+                    fg="yellow",
+                )
+
+                merged, merged_ids = [], set()
+                per_keyword_limit = max(1, min(page_max_results, int(arxiv_cfg.get("split_page_size", 25) or 25)))
+                for kw in cfg.keywords:
+                    split_q = build_search_query(cfg.categories, [kw], cfg.exclude_keywords, "AND")
+                    if verbose:
+                        click.echo(f"[arXiv] Split query: {split_q}")
+                    try:
+                        split_items = _fetch_page_items(split_q, page_start, per_keyword_limit)
+                    except Exception as split_exc:
+                        click.secho(f"[arXiv] 关键词 '{kw}' 查询失败，跳过：{split_exc}", fg="yellow")
+                        continue
+                    for split_item in split_items:
+                        aid = split_item.get("id_canonical") or canonical_arxiv_id(split_item.get("id") or "")
+                        if aid and aid in merged_ids:
+                            continue
+                        if aid:
+                            merged_ids.add(aid)
+                        merged.append(split_item)
+
+                date_key = "updated" if cfg.sort_by == "lastUpdatedDate" else "published"
+                reverse = (cfg.sort_order or "descending").lower() == "descending"
+                merged.sort(key=lambda item: _parse_dt(item.get(date_key)) or datetime.min.replace(tzinfo=timezone.utc),
+                            reverse=reverse)
+                return merged[:page_max_results]
+
+        for _page in range(max_pages):
+            page_items = _fetch_page_items_with_split_fallback(start, page_size)
             if not page_items:
                 break
 

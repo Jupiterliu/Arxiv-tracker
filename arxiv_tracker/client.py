@@ -37,14 +37,18 @@ def _sleep_backoff(attempt: int) -> None:
     time.sleep(delay)
 
 
-def _do_get(base_url: str, params: Dict[str, str], timeout: Optional[float] = None) -> requests.Response:
+def _do_get(base_url: str,
+            params: Dict[str, str],
+            timeout: Optional[float] = None,
+            max_attempts: Optional[int] = None) -> requests.Response:
     """
     带重试的 GET：对超时/连接错误/部分 5xx&429 做重试。
     """
     timeout = timeout or DEFAULT_TIMEOUT
+    attempts = max(1, int(max_attempts or MAX_ATTEMPTS))
     last_err: Optional[Exception] = None
 
-    for attempt in range(1, MAX_ATTEMPTS + 1):
+    for attempt in range(1, attempts + 1):
         try:
             resp = _session.get(base_url, params=params, headers=HEADERS, timeout=timeout)
             # 主动对可重试状态码抛出异常，以走重试逻辑
@@ -63,7 +67,7 @@ def _do_get(base_url: str, params: Dict[str, str], timeout: Optional[float] = No
                 break
 
         # 还有机会就退避后继续
-        if attempt < MAX_ATTEMPTS:
+        if attempt < attempts:
             _sleep_backoff(attempt)
 
     # 全部失败
@@ -76,7 +80,9 @@ def fetch_arxiv_feed(query: str,
                      start: int = 0,
                      max_results: int = 10,
                      sort_by: str = "submittedDate",
-                     sort_order: str = "descending") -> str:
+                     sort_order: str = "descending",
+                     timeout: Optional[float] = None,
+                     max_attempts: Optional[int] = None) -> str:
     """
     拉取 arXiv Atom Feed。先 HTTPS，失败则 HTTP 回退。
     """
@@ -91,7 +97,7 @@ def fetch_arxiv_feed(query: str,
     last_err: Optional[Exception] = None
     for base in (ARXIV_HTTPS, ARXIV_HTTP):
         try:
-            r = _do_get(base, params, timeout=DEFAULT_TIMEOUT)
+            r = _do_get(base, params, timeout=timeout or DEFAULT_TIMEOUT, max_attempts=max_attempts)
             r.raise_for_status()
             return r.text
         except Exception as e:
