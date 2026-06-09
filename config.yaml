@@ -25,6 +25,16 @@ max_results: 100
 sort_by: "lastUpdatedDate"  # 还可以是submittedDate 建议改成lastUpdatedDate按更新时间排，能捞到v2/v3的“新增”
 sort_order: "descending"
 
+
+# —— arXiv API 抗慢查询设置 ——
+arxiv:
+  page_size: 50                    # 复杂 OR 查询用较小分页，降低 export.arxiv.org 读超时概率
+  max_pages: 20
+  full_query_timeout: 20           # 完整查询快速失败，随后按关键词拆分重试
+  full_query_attempts: 1
+  split_keywords_on_failure: true
+  split_page_size: 25
+
 # zh / en / both
 lang: "both"
 
